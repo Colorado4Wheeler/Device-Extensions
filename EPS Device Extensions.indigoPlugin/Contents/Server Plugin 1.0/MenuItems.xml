@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+
+<MenuItems>
+	<MenuItem id="debugDump">
+		<Name>Support debug log dump</Name>
+		<CallbackMethod>supportLogDump</CallbackMethod>
+	</MenuItem>	
+	
+    <MenuItem id="update">
+    	<Name>Check For Plugin Update</Name>
+    	<CallbackMethod>updateCheck</CallbackMethod>
+    </MenuItem>
+    
+     <MenuItem id="libVersion">
+    	<Name>Show Library Version Summary</Name>
+    	<CallbackMethod>showLibraryVersions</CallbackMethod>
+    </MenuItem>
+    
+    <MenuItem id="supportLog">
+    	<Name>Support Data Dump</Name>
+    	<CallbackMethod>supportLog</CallbackMethod>
+    </MenuItem>
+</MenuItems>

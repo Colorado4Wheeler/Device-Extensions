@@ -1,0 +1,144 @@
+<?xml version="1.0"?>
+<Actions>
+	<SupportURL>http://forums.indigodomo.com/viewtopic.php?f=197&amp;t=16194</SupportURL>
+	
+	<Action id="update" deviceFilter="self">
+		<Name>Update from device</Name>
+		<CallbackMethod>updateFromDevice</CallbackMethod>
+	</Action>
+	
+	<Action id="resethighlow" deviceFilter="self">
+		<Name>Reset daily highs and lows</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="sep_general"/>
+	
+	<Action id="ir-zone1toggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeirr">
+		<Name>Irrigation - Toggle zone 1 On/Off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="ir-zone2toggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeirr">
+		<Name>Irrigation - Toggle zone 2 On/Off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="ir-zone3toggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeirr">
+		<Name>Irrigation - Toggle zone 3 On/Off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="ir-zone4toggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeirr">
+		<Name>Irrigation - Toggle zone 4 On/Off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="ir-zone5toggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeirr">
+		<Name>Irrigation - Toggle zone 5 On/Off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="ir-zone6toggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeirr">
+		<Name>Irrigation - Toggle zone 6 On/Off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="ir-zone7toggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeirr">
+		<Name>Irrigation - Toggle zone 7 On/Off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="ir-zone8toggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeirr">
+		<Name>Irrigation - Toggle zone 8 On/Off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="sep_irrigation"/>
+	
+	<Action id="ir-pause" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeirr">
+		<Name>Irrigation - Pause running schedule</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="ir-resume" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeirr">
+		<Name>Irrigation - Resume running schedule</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="ir-quickpause" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeirr">
+		<Name>Irrigation - Quick Pause Schedule (EXPERIMENTAL)</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+		<ConfigUI>
+			<Field id="label" type="label">
+				<Label>Quick pause allows you to pause your sprinklers and automatically resume them afterwards.  
+				
+Each successive execution of quick pause will add the time to the pause time (i.e., you pause for 10 minutes then before it resumes you pause for 10 more then 10 minutes will be added to whatever existing pause time is left.)</Label>
+			</Field>
+			
+			<Field id="pauseminutes" type="textfield" defaultValue="20">
+				<Label>Minutes to pause sprinklers:</Label>
+			</Field>
+			
+		</ConfigUI>
+	</Action>
+	
+	<Action id="sep_irrigation2"/>
+	
+	<Action id="th-fantoggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeth">
+		<Name>Thermostat - Toggle fan Always On/Auto On</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+		
+	<Action id="th-setmodetoggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeth">
+		<Name>Thermostat - Toggle heat/cool set mode</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="th-systemtoggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeth">
+		<Name>Thermostat - Toggle system On/Off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="sep_thermostat2"/>
+	
+	<Action id="th-setmodeup" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeth">
+		<Name>Thermostat - Increase set mode setpoint</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="th-setmodedown" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeth">
+		<Name>Thermostat - Decrease set mode setpoint</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="sep_thermostat3"/>
+	
+	<Action id="th-preset1toggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeth">
+		<Name>Thermostat - Toggle preset 1 On/Off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="th-preset2toggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeth">
+		<Name>Thermostat - Toggle preset 2 On/Off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="th-preset3toggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeth">
+		<Name>Thermostat - Toggle preset 3 On/Off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="th-preset4toggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeth">
+		<Name>Thermostat - Toggle preset 4 On/Off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+	<Action id="sep_thermostat"/>
+	
+	<Action id="url-forceoff" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeurl">
+		<Name>URL - Force to off</Name>
+		<CallbackMethod>deviceActions</CallbackMethod>
+	</Action>
+	
+</Actions>

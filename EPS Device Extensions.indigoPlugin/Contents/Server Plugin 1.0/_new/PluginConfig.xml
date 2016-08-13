@@ -1,0 +1,30 @@
+<!-- EPS (ColoradoFourWheeler) Plugin -->
+<PluginConfig>
+	<!-- Hidden prefs that are updated via other menus or in code because they may have large dialogs or complex options -->
+	<Field id="pollingMode" type="textfield" defaultValue="realTime" hidden="true">
+    	<Label>pollingMode:</Label>
+    </Field>
+    
+    <Field id="pollingInterval" type="textfield" defaultValue="1" hidden="true">
+    	<Label>pollingInterval:</Label>
+    </Field>
+    
+    <Field id="pollingFrequency" type="textfield" defaultValue="s" hidden="true">
+    	<Label>pollingFrequency:</Label>
+    </Field>
+    
+    <!-- Enabled for plugins that need to monitor Indigo device changes -->
+	<Field type="checkbox" id="monitorChanges" defaultValue="true" hidden="true">
+		<Label> </Label>
+		<Description>monitorChanges</Description>
+	</Field>
+    
+    <!-- Debug mode - part of every EPS plugin -->
+    <Field type="checkbox" id="debugMode" defaultValue="false">
+		<Label> </Label>
+		<Description>Enable debug logging</Description>
+	</Field>
+	
+	<!-- Any specialized plugin-specific options, hidden or otherwise, for THIS plugin -->
+	
+</PluginConfig>

@@ -1,0 +1,1008 @@
+<?xml version="1.0"?>
+
+<Devices>
+	<Device type="custom" id="epsdews">
+		<Name>Weather Extension</Name>
+		<ConfigUI>
+			<Field id="device" type="menu">
+				<Label>Weather Device:</Label>
+				<List class="indigo.devices" />
+				<CallbackMethod>deviceMenuChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="measurement" defaultValue="F" >
+				<Label>Show temps in:</Label>
+				<List>
+					<Option value="F">Fahrenheit</Option>
+					<Option value="C">Celcius</Option>
+				</List>
+			</Field>
+			
+			<Field type="menu" id="statedisplay" defaultValue="currenttemp" >
+				<Label>For device state show:</Label>
+				<List>
+					<Option value="currenttemp">Current Temperature</Option>
+					<Option value="currenthumidity">Current Humidity</Option>
+					<Option value="highttemp">High Temperature</Option>
+					<Option value="lowtemp">Low Temperature</Option>
+					<Option value="highhumidity">High Humidity</Option>
+					<Option value="lowhumidity">Low Humidity</Option>
+				</List>
+			</Field>
+			
+			<Field id="sep_general" type="separator" />
+			
+			<Field type="menu" id="temperature" defaultValue="temperature_F" >
+				<Label>State for temperature:</Label>
+				<List class="self" filter="" method="getStatesForDevice" dynamicReload="true"/>
+			</Field>
+			
+			<Field type="menu" id="humidity" defaultValue="humidity" >
+				<Label>State for humidity:</Label>
+				<List class="self" filter="" method="getStatesForDevice" dynamicReload="true"/>
+			</Field>
+			
+			<Field type="menu" id="rain" defaultValue="weather" >
+				<Label>State indicating rain:</Label>
+				<List class="self" filter="" method="getStatesForDevice" dynamicReload="true"/>
+			</Field>
+			
+			<Field type="menu" id="rainstatetype" defaultValue="string">
+				<Label>Rain state type:</Label>
+				<List>
+					<Option value="string">String / Number</Option>
+					<Option value="boolean">Boolean</Option>
+				</List>
+			</Field>
+			
+			<Field id="rainvalue" type="textfield" defaultValue="Rain" >
+				<Label>Value to indicate rain:</Label>
+			</Field>
+			
+			<Field id="sep_states" type="separator" />
+			
+			<Field id="label" type="label">
+				<Label>The following states will be available for your weather device:
+				
+Daily high temp
+Daily low temp
+Daily high humidity
+Daily low humidity
+Is raining (yes/no)
+				</Label>
+			</Field>
+		</ConfigUI>
+		
+		<States>
+			<State id="statedisplay">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Current device state</TriggerLabel>
+				<ControlPageLabel>Current device state</ControlPageLabel>
+			</State>
+			
+			<State id="sep1">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="raining">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Raining</TriggerLabel>
+				<ControlPageLabel>Raining</ControlPageLabel>
+			</State>
+			
+			<State id="rainpending">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Rain probable (implementation TBD)</TriggerLabel>
+				<ControlPageLabel>Rain probable (implementation TBD)</ControlPageLabel>
+			</State>
+			
+			<State id="isrecordhigh">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Todays high temperature was higher than the record high</TriggerLabel>
+				<ControlPageLabel>Todays high temperature was higher than the record high</ControlPageLabel>
+			</State>
+			
+			<State id="isrecordlow">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Todays low temperature was lower than the record lower</TriggerLabel>
+				<ControlPageLabel>Todays low temperature was lower than the record low</ControlPageLabel>
+			</State>
+			
+			<State id="sep2">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="hightemp">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Daily high temperature</TriggerLabel>
+				<ControlPageLabel>Daily high temperature</ControlPageLabel>
+			</State>
+			
+			<State id="lowtemp">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Daily low temperature</TriggerLabel>
+				<ControlPageLabel>Daily low temperature</ControlPageLabel>
+			</State>
+			
+			<State id="sep3">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="highhumidity">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Daily high humidity</TriggerLabel>
+				<ControlPageLabel>Daily high humidity</ControlPageLabel>
+			</State>
+			
+			<State id="lowhumidity">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Daily low humidity</TriggerLabel>
+				<ControlPageLabel>Daily low humidity</ControlPageLabel>
+			</State>
+			
+			<State id="sep4">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="lasthighlowreset">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Last time high and low values were reset</TriggerLabel>
+				<ControlPageLabel>Last time high and low values were reset</ControlPageLabel>
+			</State>
+			
+		</States>
+		<UiDisplayStateId>statedisplay</UiDisplayStateId>
+	</Device>
+	
+	<Device type="custom" id="epsdeth">
+		<Name>Thermostat Extension</Name>
+		<ConfigUI>
+			<Field id="device" type="menu" >
+				<Label>Thermostat Device:</Label>
+				<List class="indigo.devices" filter="indigo.thermostat" />
+			</Field>
+			
+			<Field type="menu" id="measurement" defaultValue="F" >
+				<Label>Show temps in:</Label>
+				<List>
+					<Option value="F">Fahrenheit</Option>
+					<Option value="C">Celsius</Option>
+				</List>
+			</Field>
+					
+			<Field id="sep_device" type="separator" />
+			
+			<Field id="preset1setcool" type="textfield" defaultValue="73">
+				<Label>Preset 1 set cool temperature to:</Label>
+			</Field>
+			
+			<Field id="preset1setheat" type="textfield" defaultValue="70">
+				<Label>Set heat temperature to:</Label>
+			</Field>
+			
+			<Field type="menu" id="preset1system" defaultValue="na" >
+				<Label>Set mode to:</Label>
+				<List>
+					<Option value="off">Off</Option>
+					<Option value="heat">Heat</Option>
+					<Option value="cool">Cool</Option>
+					<Option value="na">No change</Option>
+				</List>
+			</Field>
+			
+			<Field type="menu" id="preset1fan" defaultValue="na" >
+				<Label>Set fan to:</Label>
+				<List>
+					<Option value="auto">Auto on</Option>
+					<Option value="always">Always on</Option>
+					<Option value="na">No change</Option>
+				</List>
+			</Field>
+			
+			<Field id="sep_preset1" type="separator" />
+				<Field id="preset2setcool" type="textfield" defaultValue="73">
+				<Label>Preset 2 set cool temperature to:</Label>
+			</Field>
+			
+			<Field id="preset2setheat" type="textfield" defaultValue="70">
+				<Label>Set heat temperature to:</Label>
+			</Field>
+			
+			<Field type="menu" id="preset2system" defaultValue="na" >
+				<Label>Set mode to:</Label>
+				<List>
+					<Option value="off">Off</Option>
+					<Option value="heat">Heat</Option>
+					<Option value="cool">Cool</Option>
+					<Option value="na">No change</Option>
+				</List>
+			</Field>
+			
+			<Field type="menu" id="preset2fan" defaultValue="na" >
+				<Label>Set fan to:</Label>
+				<List>
+					<Option value="auto">Auto on</Option>
+					<Option value="always">Always on</Option>
+					<Option value="na">No change</Option>
+				</List>
+			</Field>
+			
+			<Field id="sep_preset2" type="separator" />
+				<Field id="preset3setcool" type="textfield" defaultValue="73">
+				<Label>Preset 3 set cool temperature to:</Label>
+			</Field>
+			
+			<Field id="preset3setheat" type="textfield" defaultValue="70">
+				<Label>Set heat temperature to:</Label>
+			</Field>
+			
+			<Field type="menu" id="preset3system" defaultValue="na" >
+				<Label>Set mode to:</Label>
+				<List>
+					<Option value="off">Off</Option>
+					<Option value="heat">Heat</Option>
+					<Option value="cool">Cool</Option>
+					<Option value="na">No change</Option>
+				</List>
+			</Field>
+			
+			<Field type="menu" id="preset3fan" defaultValue="na" >
+				<Label>Set fan to:</Label>
+				<List>
+					<Option value="auto">Auto on</Option>
+					<Option value="always">Always on</Option>
+					<Option value="na">No change</Option>
+				</List>
+			</Field>
+			
+			<Field id="sep_preset3" type="separator" />
+				<Field id="preset4setcool" type="textfield" defaultValue="73">
+				<Label>Preset 4 set cool temperature to:</Label>
+			</Field>
+			
+			<Field id="preset4setheat" type="textfield" defaultValue="70">
+				<Label>Set heat temperature to:</Label>
+			</Field>
+			
+			<Field type="menu" id="preset4system" defaultValue="na" >
+				<Label>Set mode to:</Label>
+				<List>
+					<Option value="off">Off</Option>
+					<Option value="heat">Heat</Option>
+					<Option value="cool">Cool</Option>
+					<Option value="na">No change</Option>
+				</List>
+			</Field>
+			
+			<Field type="menu" id="preset4fan" defaultValue="na" >
+				<Label>Set fan to:</Label>
+				<List>
+					<Option value="auto">Auto on</Option>
+					<Option value="always">Always on</Option>
+					<Option value="na">No change</Option>
+				</List>
+			</Field>
+			
+			<Field id="sep_preset4" type="separator" />
+			
+			<Field type="menu" id="setmode" defaultValue="heat" >
+				<Label>Default set mode:</Label>
+				<List>
+					<Option value="heat">Heat</Option>
+					<Option value="cool">Cool</Option>
+				</List>
+			</Field>
+			
+			<Field id="smartset" type="textfield" defaultValue="5">
+				<Label>Opposite mode degree offset:</Label>
+			</Field>
+			
+			<Field id="timeout" type="textfield" defaultValue="60">
+				<Label>Preset auto-off (minutes):</Label>
+			</Field>
+			
+			<Field id="failsafe" type="textfield" defaultValue="70">
+				<Label>Max auto-off temperature:</Label>
+			</Field>
+			
+			<Field type="menu" id="toggleparam" defaultValue="auto" >
+				<Label>Toggling system On/Off:</Label>
+				<List>
+					<Option value="heat">Toggles Heat to Off</Option>
+					<Option value="cool">Toggles Cool to Off</Option>
+					<Option value="auto">Toggles Auto to Off</Option>
+				</List>
+			</Field>
+			
+			<Field type="menu" id="statedisplay" defaultValue="currenttemp" >
+				<Label>For device state show:</Label>
+				<List>
+					<Option value="currenttemp">Current Temperature</Option>
+					<Option value="currenthumidity">Current Humidity</Option>
+					<Option value="highttemp">High Temperature</Option>
+					<Option value="lowtemp">Low Temperature</Option>
+					<Option value="highhumidity">High Humidity</Option>
+					<Option value="lowhumidity">Low Humidity</Option>
+					<Option value="preset">Preset Number</Option>
+					<Option value="setpoint">Current setpoint</Option>
+					<Option value="setcool">Cool setpoint</Option>
+					<Option value="setheat">Heat setpoint</Option>
+					<Option value="setmode">Set mode (heat / cool)</Option>
+				</List>
+			</Field>
+			
+			<Field id="sep_general" type="separator" />
+			
+			<Field id="label" type="label">
+				<Label>The following states will be available for your thermostat device:
+				
+System is On (true = On, false = Off)
+Fan is On (true = fan always On, false = fan auto)
+Current preset (4 presets)
+Preset X On/Off (X being presets 1 through 4)
+Set mode (true = cool, false = heat)
+
+The following actions will be available for your thermostat device:
+
+Toggle system On/Off
+Toggle fan mode Always/Auto
+Toggle presets On/Off
+Toggle set mode
+Smart increase/decrease set mode
+Reset preset auto timeout
+
+				</Label>
+			</Field>
+		</ConfigUI>
+		
+		<States>
+			<State id="statedisplay">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Current device state</TriggerLabel>
+				<ControlPageLabel>Current device state</ControlPageLabel>
+			</State>
+			
+			<State id="sep1">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="setMode">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Current set mode, True = Cool, False = Heat</TriggerLabel>
+				<ControlPageLabel>Current set mode, True = Cool, False = Heat</ControlPageLabel>
+			</State>
+			
+			<State id="fanOn">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Fan is always on</TriggerLabel>
+				<ControlPageLabel>Fan is always on</ControlPageLabel>
+			</State>
+			
+			<State id="systemOn">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>System is on</TriggerLabel>
+				<ControlPageLabel>System is on</ControlPageLabel>
+			</State>
+			
+			<State id="sep2">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="setModeSetPoint">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Setpoint of the current set mode</TriggerLabel>
+				<ControlPageLabel>Setpoint of the current set mode</ControlPageLabel>
+			</State>
+			
+			<State id="sep3">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="presetMemHeat">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Preset heat memory</TriggerLabel>
+				<ControlPageLabel>Preset heat memory</ControlPageLabel>
+			</State>
+			
+			<State id="presetMemCool">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Preset cool memory</TriggerLabel>
+				<ControlPageLabel>Preset cool memory</ControlPageLabel>
+			</State>
+			
+			<State id="presetMemFanAuto">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Preset fan auto mode memory</TriggerLabel>
+				<ControlPageLabel>Preset fan auto mode memory</ControlPageLabel>
+			</State>
+			
+			<State id="presetMemMode">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Preset system mode memory</TriggerLabel>
+				<ControlPageLabel>Preset system mode memory</ControlPageLabel>
+			</State>
+			
+			<State id="sep4">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="presetOn1">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Preset 1 active</TriggerLabel>
+				<ControlPageLabel>Preset 1 active</ControlPageLabel>
+			</State>
+			
+			<State id="presetOn2">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Preset 2 active</TriggerLabel>
+				<ControlPageLabel>Preset 2 active</ControlPageLabel>
+			</State>
+			
+			<State id="presetOn3">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Preset 3 active</TriggerLabel>
+				<ControlPageLabel>Preset 3 active</ControlPageLabel>
+			</State>
+			
+			<State id="presetOn4">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Preset 4 active</TriggerLabel>
+				<ControlPageLabel>Preset 4 active</ControlPageLabel>
+			</State>
+			
+			<State id="sep5">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="presetTimeout">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Preset auto off time remaining</TriggerLabel>
+				<ControlPageLabel>Preset auto off time remaining</ControlPageLabel>
+			</State>
+			
+			<State id="sep6">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="hightemp">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Daily high temperature</TriggerLabel>
+				<ControlPageLabel>Daily high temperature</ControlPageLabel>
+			</State>
+			
+			<State id="lowtemp">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Daily low temperature</TriggerLabel>
+				<ControlPageLabel>Daily low temperature</ControlPageLabel>
+			</State>
+			
+			<State id="sep7">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="highhumidity">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Daily high humidity</TriggerLabel>
+				<ControlPageLabel>Daily high humidity</ControlPageLabel>
+			</State>
+			
+			<State id="lowhumidity">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Daily low humidity</TriggerLabel>
+				<ControlPageLabel>Daily low humidity</ControlPageLabel>
+			</State>
+			
+			<State id="sep8">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="lasthighlowreset">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Last time high and low values were reset</TriggerLabel>
+				<ControlPageLabel>Last time high and low values were reset</ControlPageLabel>
+			</State>
+			
+		</States>
+		<UiDisplayStateId>statedisplay</UiDisplayStateId>
+	</Device>	
+	
+	<Device type="custom" id="epsdeirr">
+		<Name>Irrigation Extension</Name>
+		<ConfigUI>
+			<Field id="device" type="menu" >
+				<Label>Irrigation Device:</Label>
+				<List class="indigo.devices" filter="indigo.sprinkler" />
+			</Field>
+			
+			<Field type="menu" id="timeformat" defaultValue="ms">
+				<Label>Time format:</Label>
+				<List>
+					<Option value="hms">HH:MM:SS</Option>
+					<Option value="hm">HH:MM</Option>
+					<Option value="ms">MM:SS</Option>
+					<Option value="mm">MM</Option>
+					<Option value="mmmmtoss">MMMM to :SS</Option>
+				</List>
+			</Field>
+			
+			<Field id="sep_device" type="separator" visibleBindingId="rain" visibleBindingValue="true" />
+			
+			<Field id="rain" type="checkbox" defaultValue="false" >
+				<Label> </Label>
+				<Description>Enable rain management</Description>
+			</Field>
+			
+			<Field id="raindevice" type="menu" visibleBindingId="rain" visibleBindingValue="true">
+				<Label>Device with rain detection state:</Label>
+				<List class="indigo.devices" />
+				<CallbackMethod>deviceMenuChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="states" defaultValue="4" visibleBindingId="rain" visibleBindingValue="true" >
+				<Label>State indicating rain:</Label>
+				<List class="self" filter="" method="getStatesForDeviceIr" dynamicReload="true"/>
+			</Field>
+			
+			<Field type="menu" id="statetype" defaultValue="string" visibleBindingId="rain" visibleBindingValue="true">
+				<Label>Rain state type:</Label>
+				<List>
+					<Option value="string">String / Number</Option>
+					<Option value="boolean">Boolean</Option>
+				</List>
+			</Field>
+			
+			<Field id="rainvalue" type="textfield" defaultValue="Rain" visibleBindingId="statetype" visibleBindingValue="string">
+				<Label>Value to indicate rain:</Label>
+			</Field>
+			
+			<Field id="sep_raindevice" type="separator" visibleBindingId="rain" visibleBindingValue="true" />
+			
+			<Field type="menu" id="rainaction" defaultValue="stop" visibleBindingId="rain" visibleBindingValue="true">
+				<Label>If raining:</Label>
+				<List>
+					<Option value="nothing">Do nothing</Option>
+					<Option value="stop">Stop sprinklers</Option>
+					<Option value="pause">Pause sprinklers</Option>
+					<Option value="resume">Pause and resume when clear</Option>
+				</List>
+			</Field>
+			
+			<Field id="resetrainaction" type="checkbox" defaultValue="true" visibleBindingId="rainaction" visibleBindingValue="pause,resume">
+				<Label> </Label>
+				<Description>Stop sprinklers if condition lasts more than an hour</Description>
+			</Field>
+			
+			<Field type="menu" id="rainpendingaction" defaultValue="nothing" visibleBindingId="rain" visibleBindingValue="true" hidden="true">
+				<Label>If rain probable:</Label>
+				<List>
+					<Option value="nothing">Do nothing</Option>
+					<Option value="stop">Stop sprinklers</Option>
+					<Option value="pause">Pause sprinklers</Option>
+					<Option value="resume">Pause and resume when clear</Option>
+				</List>
+			</Field>
+			
+			<Field id="resetrainpendingaction" type="checkbox" defaultValue="true" visibleBindingId="rainpendingaction" visibleBindingValue="pause,resume" hidden="true">
+				<Label> </Label>
+				<Description>Stop sprinklers if condition lasts more than an hour</Description>
+			</Field>
+			
+			<Field id="sep_rain" type="separator" />
+			
+			<Field id="lastschedule" type="checkbox" defaultValue="false">
+				<Label> </Label>
+				<Description>Remember the last schedule ran for zone times when sprinklers turned off</Description>
+			</Field>
+							
+			<Field id="sep_general" type="separator" />
+			
+			<Field id="label" type="label">
+				<Label>
+The following states will be available for your irrigation device:
+				
+Zone run time remaining
+All zones run time remaining
+Current running zone name
+Schedule is paused (true/false)
+
+				</Label>
+			</Field>
+		</ConfigUI>
+		
+		<States>
+		
+			<State id="statedisplay">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Current device state</TriggerLabel>
+				<ControlPageLabel>Current device state</ControlPageLabel>
+			</State>
+			
+			<State id="sep1">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="raining">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Raining</TriggerLabel>
+				<ControlPageLabel>Raining</ControlPageLabel>
+			</State>
+			
+			<State id="paused">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Schedule is paused</TriggerLabel>
+				<ControlPageLabel>Schedule is paused</ControlPageLabel>
+			</State>
+			
+			<State id="quickpaused">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Schedule is quick paused</TriggerLabel>
+				<ControlPageLabel>Schedule is quick paused</ControlPageLabel>
+			</State>
+			
+			<State id="resuming">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Resuming previous schedule</TriggerLabel>
+				<ControlPageLabel>Resuming previous schedule</ControlPageLabel>
+			</State>
+			
+			<State id="timerRunning">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Irrigation timer is running</TriggerLabel>
+				<ControlPageLabel>Irrigation timer is running</ControlPageLabel>
+			</State>
+			
+			<State id="sep2">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="currentZoneName">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Name of currently running zone</TriggerLabel>
+				<ControlPageLabel>Name of currently running zone</ControlPageLabel>
+			</State>
+			
+			<State id="sep3">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="rainDetectTime">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Time when rain condition was detected</TriggerLabel>
+				<ControlPageLabel>Time when rain condition was detected</ControlPageLabel>
+			</State>
+			
+			<State id="pauseDetectTime">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Time when sprinklers were paused</TriggerLabel>
+				<ControlPageLabel>Time when sprinklers were paused</ControlPageLabel>
+			</State>
+			
+			<State id="quickPauseEndTime">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Time when sprinklers will resume from quick pause</TriggerLabel>
+				<ControlPageLabel>Time when sprinklers will resume from quick pause</ControlPageLabel>
+			</State>
+			
+			<State id="hardStopTime">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Time when rain condition stops irrigation</TriggerLabel>
+				<ControlPageLabel>Time when rain condition stops irrigation</ControlPageLabel>
+			</State>
+			
+			<State id="zoneEndTime">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Time when zone will stop watering</TriggerLabel>
+				<ControlPageLabel>Time when zone will stop watering</ControlPageLabel>
+			</State>
+			
+			<State id="scheduleEndTime">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Time when schedule will stop watering</TriggerLabel>
+				<ControlPageLabel>Time when schedule will stop watering</ControlPageLabel>
+			</State>
+			
+			<State id="sep4">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="zoneRunTimeRemaining">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Current zone run time remaining</TriggerLabel>
+				<ControlPageLabel>Current zone run time remaining</ControlPageLabel>
+			</State>
+			
+			<State id="scheduleRunTimeRemaining">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Current schedule run time remaining</TriggerLabel>
+				<ControlPageLabel>Current schedule run time remaining</ControlPageLabel>
+			</State>
+			
+			<State id="pauseTimeRemaining">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Schedule paused time remaining until hard stop</TriggerLabel>
+				<ControlPageLabel>Schedule paused time remaining until hard stop</ControlPageLabel>
+			</State>
+			
+			<State id="sep5">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="zone1Schedule">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Zone 1 scheduled run time</TriggerLabel>
+				<ControlPageLabel>Zone 1 scheduled run time</ControlPageLabel>
+			</State>
+			
+			<State id="zone2Schedule">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Zone 2 scheduled run time</TriggerLabel>
+				<ControlPageLabel>Zone 2 scheduled run time</ControlPageLabel>
+			</State>
+			
+			<State id="zone3Schedule">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Zone 3 scheduled run time</TriggerLabel>
+				<ControlPageLabel>Zone 3 scheduled run time</ControlPageLabel>
+			</State>
+			
+			<State id="zone4Schedule">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Zone 4 scheduled run time</TriggerLabel>
+				<ControlPageLabel>Zone 4 scheduled run time</ControlPageLabel>
+			</State>
+			
+			<State id="zone5Schedule">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Zone 5 scheduled run time</TriggerLabel>
+				<ControlPageLabel>Zone 5 scheduled run time</ControlPageLabel>
+			</State>
+			
+			<State id="zone6Schedule">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Zone 6 scheduled run time</TriggerLabel>
+				<ControlPageLabel>Zone 6 scheduled run time</ControlPageLabel>
+			</State>
+			
+			<State id="zone7Schedule">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Zone 7 scheduled run time</TriggerLabel>
+				<ControlPageLabel>Zone 7 scheduled run time</ControlPageLabel>
+			</State>
+			
+			<State id="zone8Schedule">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Zone 8 scheduled run time</TriggerLabel>
+				<ControlPageLabel>Zone 8 scheduled run time</ControlPageLabel>
+			</State>
+						
+		</States>
+		<UiDisplayStateId>statedisplay</UiDisplayStateId>
+	</Device>
+	
+	<Device type="custom" id="epsdecon">
+		<Name>Conversion Extension</Name>
+		<ConfigUI>
+			<Field type="checkbox" id="chdevice" defaultValue="true">
+				<Label>Use device:</Label>
+				<Description>Use device when checked, variable when unchecked</Description>
+			</Field>
+			
+			<Field id="device" type="menu" visibleBindingId="chdevice" visibleBindingValue="true">
+				<Label>Device:</Label>
+				<List class="indigo.devices" />
+				<CallbackMethod>deviceMenuChanged</CallbackMethod>
+			</Field>
+			
+			<Field id="variable" type="menu" visibleBindingId="chdevice" visibleBindingValue="false">
+				<Label>Variable:</Label>
+				<List class="indigo.variables" />
+			</Field>
+			
+			<Field type="menu" id="states" defaultValue="4" visibleBindingId="chdevice" visibleBindingValue="true">
+				<Label>State to convert:</Label>
+				<List class="self" filter="" method="getStatesForDevice" dynamicReload="true"/>
+			</Field>
+			
+			<Field type="menu" id="action" defaultValue="bool" >
+				<Label>Conversion action:</Label>
+				<List>
+					<Option value="ftoc">Convert Fahrenheit to Celcius</Option>
+					<Option value="ctof">Convert Celcius to Fahrenheit</Option>
+					<Option value="lux">Convert Lux to Word State</Option>
+					<Option value="bool">Convert State to Boolean</Option>
+					<Option value="dtmin">Convert Date/Time to Elapsed Minutes</Option>
+					<Option value="boolstr">Convert Boolean to String</Option>
+					<Option value="booltype">Convert to Boolean Type</Option>
+					<Option value="true">Always True</Option>
+					<Option value="false">Always False</Option>
+					<Option value="string">Convert to String (and optionally trim)</Option>
+					<Option value="dtformat">Convert Date/Time Format</Option>
+					<Option value="strtonum">Convert String to Number</Option>
+					<Option value="strtocase">Convert String to Cased String</Option>
+				</List>
+			</Field>
+			
+			<Field type="menu" id="strcase" defaultValue="initial" visibleBindingId="action" visibleBindingValue="strtocase" >
+				<Label>Convert to:</Label>
+				<List>
+					<Option value="initial">Initial Case</Option>
+					<Option value="title">Title Case</Option>
+					<Option value="upper">All Caps</Option>
+					<Option value="lower">All Lower</Option>
+				</List>
+			</Field>
+			
+			<Field type="menu" id="numtype" defaultValue="int" visibleBindingId="action" visibleBindingValue="strtonum" >
+				<Label>Convert to:</Label>
+				<List>
+					<Option value="int">Integer (whole number)</Option>
+					<Option value="float">Float (include decimal)</Option>
+				</List>
+			</Field>
+			
+			<Field id="inputdtformat" type="textfield" defaultValue="%Y-%m-%d %H:%M:%S" visibleBindingId="action" visibleBindingValue="dtformat">
+				<Label>Input format:</Label>
+			</Field>
+			
+			<Field id="outputdtformat" type="textfield" defaultValue="%Y-%m-%d %r" visibleBindingId="action" visibleBindingValue="dtformat">
+				<Label>Output format:</Label>
+			</Field>
+			
+			<Field id="maxlength" type="textfield" defaultValue="0" visibleBindingId="action" visibleBindingValue="string">
+				<Label>Max string length:</Label>
+			</Field>
+			
+			<Field id="trimstart" type="textfield" defaultValue="0" visibleBindingId="action" visibleBindingValue="string,strtonum">
+				<Label>Remove beginning characters:</Label>
+			</Field>
+			
+			<Field id="trimend" type="textfield" defaultValue="0" visibleBindingId="action" visibleBindingValue="string,strtonum">
+				<Label>Remove end characters:</Label>
+			</Field>
+			
+			<Field type="menu" id="booltype" defaultValue="tf" visibleBindingId="action" visibleBindingValue="booltype" >
+				<Label>Convert to:</Label>
+				<List>
+					<Option value="tf">True/False</Option>
+					<Option value="yesno">Yes/No</Option>
+					<Option value="onoff">On/Off</Option>
+					<Option value="oz">1/0</Option>
+					<Option value="oc">Open/Closed</Option>
+					<Option value="lock">Locked/Unlocked</Option>
+					<Option value="rdy">Ready/Not Ready</Option>
+					<Option value="avail">Available/Unavailable</Option>
+					<Option value="gbad">Good/Bad</Option>
+				</List>
+			</Field>
+			
+			<Field id="reverse" type="checkbox" defaultValue="false" visibleBindingId="action" visibleBindingValue="booltype">
+				<Label> </Label>
+				<Description>Reverse true/false values</Description>
+			</Field>
+			
+			<Field id="dateformat" type="textfield" defaultValue="%Y-%m-%d %H:%M:%S" visibleBindingId="action" visibleBindingValue="dtmin">
+				<Label>Date/Time Python Format:</Label>
+			</Field>
+		
+			<Field id="precision" type="textfield" defaultValue="1" visibleBindingId="action" visibleBindingValue="ctof,ftoc">
+				<Label>Decimal precision:</Label>
+			</Field>
+			
+			<Field id="lbl_action" type="label" visibleBindingId="action" visibleBindingValue="bool">
+				<Label>When converting to boolean BOTH 'Converted value of device as string' AND 'Converted value of device as boolean' will show as either True or False.
+				</Label>
+			</Field>
+			
+			<Field id="sep_action" type="separator" visibleBindingId="action" visibleBindingValue="bool,boolstr,strbool"/>
+			
+			<Field id="lbl_conditions" type="label" visibleBindingId="action" visibleBindingValue="bool">
+				<Label>You should use only ONE of the conditions below so that it equates to IF-Then-Else.  The other should be set to *ELSE*, however you can define both conditions so long as you know that if neither or both condition succeeds the state will default to False and may produce unexpected results.
+				</Label>
+			</Field>
+			
+			<Field id="truewhen" type="textfield" defaultValue="" visibleBindingId="action" visibleBindingValue="bool,boolstr,strbool">
+				<Label>For True value should equal:</Label>
+			</Field>
+			
+			<Field id="falsewhen" type="textfield" defaultValue="*ELSE*" visibleBindingId="action" visibleBindingValue="bool,boolstr,strbool">
+				<Label>For False value should equal:</Label>
+			</Field>
+			
+			<Field id="sep_general" type="separator" />
+			
+			<Field id="label" type="label">
+				<Label>
+The following states will be available for your custom device:
+				
+Converted value (lower case true/false when converting state to boolean)
+Converted number (only used when converting numbers)
+Converted boolean (only used when converting state to boolean)
+
+Tip:
+If you want to swap True/False or On/Off states you can set the true value to "false" and the false value to "true".
+
+				</Label>
+			</Field>
+			
+		</ConfigUI>
+		
+		<States>
+			<State id="statedisplay">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Current device state</TriggerLabel>
+				<ControlPageLabel>Current device state</ControlPageLabel>
+			</State>
+			<State id="convertedValue">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Converted value of device as string</TriggerLabel>
+				<ControlPageLabel>Converted value of device as string</ControlPageLabel>
+			</State>
+			<State id="convertedBoolean">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Converted value of device as boolean</TriggerLabel>
+				<ControlPageLabel>Converted value of device as boolean</ControlPageLabel>
+			</State>
+			<State id="convertedNumber">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Converted value of device as number</TriggerLabel>
+				<ControlPageLabel>Converted value of device as number</ControlPageLabel>
+			</State>
+			
+			
+		</States>
+		<UiDisplayStateId>statedisplay</UiDisplayStateId>
+	</Device>
+	
+	<Device type="relay" id="epsdeurl">
+		<Name>URL Extension</Name>
+		<ConfigUI>
+			<Field id="onCommand" type="textfield" defaultValue="" >
+				<Label>Turn on URL:</Label>
+			</Field>
+			
+			<Field id="offCommand" type="textfield" defaultValue="" >
+				<Label>Turn off URL:</Label>
+			</Field>
+			
+			<Field id="toggleCommand" type="textfield" defaultValue="" >
+				<Label>Toggle on/off URL:</Label>
+			</Field>
+			
+			<Field id="sep_toggles" type="separator" />
+			
+			<Field id="url" type="textfield" defaultValue="" >
+				<Label>Optional command URL:</Label>
+			</Field>
+			
+			<Field id="sep_url" type="separator" />
+			
+			<Field id="username" type="textfield" defaultValue="" >
+				<Label>Optional User name:</Label>
+			</Field>
+			
+			<Field id="password" type="textfield" defaultValue="" secure="true">
+				<Label>Optional Password:</Label>
+			</Field>
+					
+			<Field id="sep_general" type="separator" />
+			
+			<Field id="label" type="label">
+				<Label>
+This acts as a normal On/Off device in Indigo, use it the same way you would any other switch.  This is a blind command, meaning there is no feedback so no way to know if it is on or off, leave the toggle URL blank then the plugin will alternate between the on and off commands depending on which state (on or off) the device currently is in.  If you get stuck on this you can execute the "Force Off" action to force it to an off state.
+
+				</Label>
+			</Field>
+			
+		</ConfigUI>
+		
+		<States>
+			<State id="statedisplay">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Current device state</TriggerLabel>
+				<ControlPageLabel>Current device state</ControlPageLabel>
+			</State>
+		</States>
+		<UiDisplayStateId>statedisplay</UiDisplayStateId>
+	</Device>	
+	
+</Devices>
