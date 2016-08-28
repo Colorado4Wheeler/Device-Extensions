@@ -1,7 +1,12 @@
 Release Notes
 ==========
 
-Version 1.54 (Version 2.0 Beta 1)
+Version 1.61 (Version 2.0 Beta 2)
+---------------
+
+* Fixed a typo where low temps were not being calculated correctly on Weather devices
+
+Version 1.6 (Version 2.0 Beta 1)
 ---------------
 
 * Plugin, templates and libraries are now using the Indigo 7 libraries
@@ -21,6 +26,8 @@ Version 1.54 (Version 2.0 Beta 1)
 * Moved all actions to their proper Device sub-menu rather than having them all piled up in the root of the actions menu
 * Removed "Update From Device" action since all device updates are dynamic enough that it is no longer needed
 * Removed "Reset daily highs and lows" action since there really is no need to reset it manually
+* Added ability to use irrigation zones like devices by issuing on/off/dim commands where dim is the percentage of max duration, this to add support to Homebridge Buddy but also to use in scripting if desired
+
 
 Development Notes
 ==========

@@ -60,6 +60,22 @@
 		<CallbackMethod>irrigationAction</CallbackMethod>
 	</Action>
 	
+	<Action id="ir-runzone" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeirr" uiPath="DeviceActions">
+		<Name>Irrigation - Turn on an irrigation zone</Name>
+		<CallbackMethod>irrigationAction</CallbackMethod>
+		<ConfigUI>
+			<Field type="menu" id="zone" defaultValue="1" >
+				<Label>Zone:</Label>
+				<List class="self" filter="#plugin#[callback=zoneList, includetarget=true]" method="getCustomList" />
+			</Field>
+			
+			<Field id="duration" type="textfield" defaultValue="0">
+				<Label>Minutes to run zone:</Label>
+			</Field>
+			
+		</ConfigUI>
+	</Action>
+	
 	<Action id="ir-zone2toggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeirr" uiPath="DeviceActions">
 		<Name>Irrigation - Toggle zone 2 On/Off</Name>
 		<CallbackMethod>irrigationAction</CallbackMethod>

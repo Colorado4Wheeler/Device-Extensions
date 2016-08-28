@@ -533,12 +533,12 @@ class Plugin(indigo.PluginBase):
 	#
 	# URL actions
 	#
-	def irrigationAction (self, devAction):
+	def urlActions (self, devAction):
 		try:
 			parent = indigo.devices[devAction.deviceId]
 			
 			if devAction.pluginTypeId == "url-forceoff": 
-				parent.updateStateOnServer(key="onOffState", False)
+				parent.updateStateOnServer("onOffState", False)
 			
 		except Exception as e:
 			self.logger.error (ext.getException(e))				
@@ -567,6 +567,29 @@ class Plugin(indigo.PluginBase):
 				zoneTimeRemaining = self.calculateUITime (parent, "zoneEndTime")
 				iutil.updateState ("zoneRunTimeRemaining", zoneTimeRemaining, states)
 				iutil.updateState ("statedisplay", "Z" + str(child.displayStateValRaw) + " - " + zoneTimeRemaining, states)
+				
+			elif child.states["activeZone"] == 0 and child.pausedScheduleZone is not None:
+				# We are paused, see if we need to hard stop due to rain or if we need to resume a quick pause
+				if parent.pluginProps["rain"] and parent.pluginProps["resetrainaction"] and (parent.pluginProps["rainaction"] == "pause" or parent.pluginProps["rainaction"] == "resume"):
+					uitime = self.calculateUITime (parent, "hardStopTime")
+					
+					if uitime == "00:00" or uitime == "00:00:00":
+						self.logger.info ("'{0}' was paused due to rain and it has been raining for more than an hour, stopping '{1}'".format(parent.name, child.name))
+						indigo.sprinkler.stop (child.id)				
+						iutil.updateState ("timerRunning", False, states)
+					else:
+						iutil.updateState ("pauseTimeRemaining", uitime, states)
+						
+				elif parent.states["quickpaused"]:
+					uitime = self.calculateUITime (parent, "quickPauseEndTime")
+					
+					if uitime == "00:00" or uitime == "00:00:00":
+						#self.logger.info ("'{0}' was quick paused and the quick pause time is up, resuming '{1}'".format(parent.name, child.name))
+						#indigo.sprinkler.resume (child.id)
+						pass
+						
+					else:
+						iutil.updateState ("pauseTimeRemaining", uitime, states)
 				
 			if len(states) > 0: parent.updateStatesOnServer (states)
 		
@@ -821,8 +844,74 @@ class Plugin(indigo.PluginBase):
 			if devAction.pluginTypeId == "ir-zone7toggle": self.zoneToggle (child, 7)
 			if devAction.pluginTypeId == "ir-zone8toggle": self.zoneToggle (child, 8)
 			
+			if devAction.pluginTypeId == "ir-quickpause": 
+				if child.states["activeZone"] == 0:
+					self.logger.warn ("Unable to quick pause '{0}' because it is not running right now".format(child.name))
+					
+				else:
+					states = []
+					
+					indigo.server.log(unicode(devAction))
+					
+					iutil.updateState ("timerRunning", True, states)	
+					iutil.updateState ("quickpaused", True, states)	
+					
+					stopat = dtutil.dateAdd ("minutes", int(devAction.props["pauseminutes"]), indigo.server.getTime())	
+					states = iutil.updateState ("quickPauseEndTime", stopat.strftime("%Y-%m-%d %H:%M:%S"), states)
+					
+					indigo.sprinkler.pause (child.id)
+					parent.updateStatesOnServer (states)
+					
+			if devAction.pluginTypeId == "ir-runzone": 
+				self.zoneRun (child, devAction.props["zone"], devAction.props["duration"])
+			
+			
 		except Exception as e:
 			self.logger.error (ext.getException(e))		
+	
+	
+	#
+	# Return list of zones
+	#
+	def zoneList (self, args, valuesDict):
+		retList = []
+		
+		try:
+			parent = indigo.devices[int(args["targetId"])]
+			child = indigo.devices[int(parent.pluginProps["device"])]
+			
+			for i in range(0, 8):
+				if child.zoneEnableList[i]:
+					retList.append ((str(i + 1), child.zoneNames[i]))
+			
+		except Exception as e:
+			self.logger.error (ext.getException(e))		
+			
+		return retList
+			
+	# 
+	# Turn zone on
+	#
+	def zoneRun (self, child, zoneNum, duration):		
+		try:
+			zoneNum = int(zoneNum)
+			duration = int(duration)
+			schedule = [0, 0, 0, 0, 0, 0, 0, 0]
+			
+			schedule[zoneNum - 1] = duration
+			
+			if child.states["activeZone"] != 0 or child.pausedScheduleZone is not None:
+				# We are running, stop it first
+				self.logger.info ("Stopping current sprinkler schedule on '{0}' so the Run Zone action can run".format(child.name))
+				#indigo.sprinkler.stop (child.id) 
+			
+			self.logger.info ("Running '{0}' zone {1} for {2} minutes".format(child.name, str(zoneNum), str(duration)))
+			self.logger.debug ("Running '{0}' schedule: {1}".format(child.name, unicode(schedule)))
+			
+			#indigo.sprinkler.run(child.id, schedule=schedule) 
+						
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
 			
 	# 
 	# Toggle zone on/off
@@ -1267,7 +1356,7 @@ class Plugin(indigo.PluginBase):
 		
 			states = []
 			states = iutil.updateState ("hightemp", calcs.getHighFloatValue (child, tempVar, parent.states["hightemp"]), states)
-			states = iutil.updateState ("lowtemp", calcs.getHighFloatValue (child, tempVar, parent.states["lowtemp"]), states)
+			states = iutil.updateState ("lowtemp", calcs.getLowFloatValue (child, tempVar, parent.states["lowtemp"]), states)
 			states = iutil.updateState ("highhumidity", calcs.getHighFloatValue (child, humVar, parent.states["highhumidity"]), states)
 			states = iutil.updateState ("lowhumidity", calcs.getHighFloatValue (child, humVar, parent.states["lowhumidity"]), states)
 		
