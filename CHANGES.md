@@ -1,6 +1,13 @@
 Release Notes
 ==========
 
+Version 2.0
+---------------
+
+* Official Indigo 7 release
+* Updated core libraries to fix issues with Prowl Indigo plugin
+
+
 Version 1.61 (Version 2.0 Beta 2)
 ---------------
 
@@ -33,13 +40,15 @@ Development Notes
 ==========
 
 
-Known Issues As Of The Most Current Release
+Known Issues As Of The Most Current Release (Leftover from Legacy 1.x version, may no longer apply)
 ---------------
 
 * For converting a state to boolean the type of boolean field shows up, which is a bug but also makes sense, so incorporate that into the results
 * Need to convert thermostat devices to use date/time routines for preset countdowns when upgrading (we now use presetExpires for calculation and use presetTimeout as a minute countdown in case they want to use that on control pages)
 * Low temperature not working, it always uses the current temperature
 * Changing zones doesn't update the zone timer on the device list
+* Errors reported by DC: http://forums.indigodomo.com/viewtopic.php?f=197&t=17294&p=130810#p130810
+* Errors reported by gbreeze (see PM)
 
 Wish List
 ---------------

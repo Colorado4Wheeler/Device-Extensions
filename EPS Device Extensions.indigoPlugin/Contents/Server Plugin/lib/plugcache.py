@@ -1,6 +1,6 @@
 # lib.plugcache - Reads plugin information into a re-usable cache
 #
-# Copyright (c) 2016 ColoradoFourWheeler / ext
+# Copyright (c) 2017 ColoradoFourWheeler / ext
 #
 
 import indigo
@@ -516,39 +516,51 @@ class plugcache:
 		
 			base = indigo.server.getInstallFolderPath() + "/Plugins"
 			plugins = glob.glob(base + "/*.indigoPlugin")	
+			plugInfo = ''
 			
 			for plugin in plugins:
-				plugInfo = self._parsePlist (plugin)
-				#if plugInfo["id"] != "com.eps.indigoplugin.dev-template": continue
+				try:
+					# IGNORE LIST - some of these cause problems, ignore until a resolution can be determined
+					if plugin == base + "/Prowl.indigoPlugin":
+						self.logger.info ("Ingoring the {0} plugin because it generates errors when we access it".format("Prowl"))
+						continue
+				
+					plugInfo = self._parsePlist (plugin)
+					#if plugInfo["id"] != "com.eps.indigoplugin.dev-template": continue
 
-				pluginXML = indigo.Dict()
+					pluginXML = indigo.Dict()
 				
-				# If it's this plugin then parse in the Indigo built-in commands
-				if plugInfo["id"] == self.factory.plugin.pluginId:
-					plugInfoEx = indigo.Dict()
-					plugInfoEx["id"] = "Indigo"
-					plugInfoEx["name"] = "Indigo Built-In Commands"
-					plugInfoEx["path"] = ""
+					# If it's this plugin then parse in the Indigo built-in commands
+					if plugInfo["id"] == self.factory.plugin.pluginId:
+						plugInfoEx = indigo.Dict()
+						plugInfoEx["id"] = "Indigo"
+						plugInfoEx["name"] = "Indigo Built-In Commands"
+						plugInfoEx["path"] = ""
 					
-					if os.path.isfile(plugin + "/Contents/Server Plugin/lib/actionslib.xml"):
-						pluginXML["actions"] = self._parseActionsXML(plugin + "/Contents/Server Plugin/lib/actionslib.xml")
+						if os.path.isfile(plugin + "/Contents/Server Plugin/lib/actionslib.xml"):
+							pluginXML["actions"] = self._parseActionsXML(plugin + "/Contents/Server Plugin/lib/actionslib.xml")
 						
-					pluginXML["devices"] = indigo.Dict() # Placeholder
+						pluginXML["devices"] = indigo.Dict() # Placeholder
 						
-					plugInfoEx["xml"] = pluginXML	
-					self.pluginCache["Indigo"] = plugInfoEx
-					#indigo.server.log(unicode(plugInfoEx))	
+						plugInfoEx["xml"] = pluginXML	
+						self.pluginCache["Indigo"] = plugInfoEx
+						#indigo.server.log(unicode(plugInfoEx))	
 				
-				if os.path.isfile(plugin + "/Contents/Server Plugin/Devices.xml"):
-					pluginXML["devices"] = self._parseDevicesXML(plugin + "/Contents/Server Plugin/Devices.xml")
+					if os.path.isfile(plugin + "/Contents/Server Plugin/Devices.xml"):
+						pluginXML["devices"] = self._parseDevicesXML(plugin + "/Contents/Server Plugin/Devices.xml")
+											
+					if os.path.isfile(plugin + "/Contents/Server Plugin/Actions.xml"):
+						pluginXML["actions"] = self._parseActionsXML(plugin + "/Contents/Server Plugin/Actions.xml")
 					
-				if os.path.isfile(plugin + "/Contents/Server Plugin/Actions.xml"):
-					pluginXML["actions"] = self._parseActionsXML(plugin + "/Contents/Server Plugin/Actions.xml")
+					plugInfo["xml"] = pluginXML
+	
+					self.pluginCache[plugInfo["id"]] = plugInfo
 					
-	
-				plugInfo["xml"] = pluginXML
-	
-				self.pluginCache[plugInfo["id"]] = plugInfo
+				except Exception as e:
+					self.logger.error ("Exception encountered with " + unicode(plugin) + " (this error is NOT critical)")
+					#self.logger.debug ("Plugin Information: " + unicode(plugInfo))
+					self.logger.error (ext.getException(e))	
+					
 	
 			#self._parseDevicesXML(kDevicesFilename)
 			#self._parseEventsXML(kEventsFilename)
@@ -559,7 +571,7 @@ class plugcache:
 			
 		
 		except Exception as e:
-			raise
+			#raise
 			self.logger.error (ext.getException(e))	
 			
 	#
