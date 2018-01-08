@@ -1,11 +1,12 @@
 # lib.ext - Some useful extended commands and generic exception handler
 #
-# Copyright (c) 2016 ColoradoFourWheeler / EPS
+# Copyright (c) 2018 ColoradoFourWheeler / EPS
 #
 
 import indigo
 import linecache # exception reporting
 import sys # exception reporting
+import json
 
 plugin = None
 
@@ -68,3 +69,21 @@ def printException (e, logger = None):
 			
 	else:
 		logger.error (e)
+		
+#
+# Get a JSON Py dictionary item for the key provided
+#
+def getJSONDictForKey (JData, key):
+	try:
+		keylist = ""
+		itemList = json.loads(JData)
+		for item in itemList:
+			keylist += item["key"] + "\n"
+			if item["key"] == key:
+				return item
+	
+	except Exception as e:
+		printException(e)
+		
+	indigo.server.log ("ext.getJSONDictForKey was unable to find an entry for key '{0}'.  The follow keys were found: \n{1}".format(key, keylist))
+	return {}

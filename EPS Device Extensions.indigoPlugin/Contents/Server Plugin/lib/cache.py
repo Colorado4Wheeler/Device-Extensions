@@ -1,6 +1,6 @@
 # lib.cache - Caches devices and items from Indigo for lookup
 #
-# Copyright (c) 2016 ColoradoFourWheeler / EPS
+# Copyright (c) 2018 ColoradoFourWheeler / EPS
 #
 
 import indigo
@@ -152,6 +152,10 @@ class cache:
 			self.subscribeToChanges(parent)
 			
 			for devId, state in watchedItemsDict.iteritems():
+				if int(devId) not in indigo.devices:
+					self.logger.error ("Device '{0}' is referencing device ID {1} but that device is no longer an Indigo device.  Please change the device reference or remove '{0}' to prevent this error".format(parent.name, str(devId)))
+					continue
+						
 				states = []
 				
 				# They can pass a single state or a list of states, we'll convert if needed
@@ -337,6 +341,10 @@ class cache:
 		try:
 			for fieldName, fieldValue in dev.pluginProps.iteritems():
 				if fieldName in DEV_FIELDS and fieldValue != "":
+					if int(fieldValue) not in indigo.devices:
+						self.logger.error ("Device '{0}' is referencing device ID {1} but that device is no longer an Indigo device.  Please change the device reference or remove '{0}' to prevent this error".format(dev.name, str(fieldValue)))
+						return False
+				
 					d = indigo.devices[int(fieldValue)]
 					self.logger.debug ("Found device reference field '{1}' in plugin device '{0}', auto-watching '{2}' for changes".format(dev.name, fieldName, d.name))
 					self._watchObject (dev, d)

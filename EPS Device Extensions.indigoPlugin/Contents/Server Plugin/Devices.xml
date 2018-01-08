@@ -846,6 +846,10 @@ Schedule is paused (true/false)
 				</List>
 			</Field>
 			
+			<Field id="luxfactor" type="textfield" defaultValue="1" visibleBindingId="action" visibleBindingValue="lux" tooltip="Lux normally rates up to 100,001 but if your device detects to a lesser amount then enter that amount as a decimal.  For example, Fibaro motion sensors only detect up to 32,767 so you would enter .32767 here.  If you don't know then leave it as 1.">
+				<Label>Adjustment:</Label>
+			</Field>
+			
 			<Field id="inputdtformat" type="textfield" defaultValue="%Y-%m-%d %H:%M:%S" visibleBindingId="action" visibleBindingValue="dtformat">
 				<Label>Input format:</Label>
 			</Field>

@@ -1,6 +1,6 @@
 # lib.eps - The factory that starts everything
 #
-# Copyright (c) 2017 ColoradoFourWheeler / EPS
+# Copyright (c) 2018 ColoradoFourWheeler / EPS
 #
 
 import indigo
@@ -15,7 +15,7 @@ from support import support
 
 
 class eps:
-	VERSION = "2.11"
+	VERSION = "2.4.2"
 	
 	#
 	# Initialize the  class
@@ -90,6 +90,11 @@ class eps:
 				self.logger.threaddebug("Loading actions library")
 				from actions import actions
 				self.act = actions (self)
+				
+			if lib == "actionsv2":
+				self.logger.threaddebug("Loading actions v2 library")
+				from actions_v2 import actions
+				self.actv2 = actions (self)	
 				
 			if lib == "devices":
 				self.logger.threaddebug("Loading device extensions library")

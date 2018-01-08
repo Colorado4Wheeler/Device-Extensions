@@ -1,6 +1,6 @@
 # lib.ui - Custom list returns and UI enhancements
 #
-# Copyright (c) 2016 ColoradoFourWheeler / EPS
+# Copyright (c) 2018 ColoradoFourWheeler / EPS
 #
 
 import indigo
@@ -17,6 +17,10 @@ import time
 import sys
 import string
 import calendar
+
+# For JSON Encoding
+import json
+import hashlib
 
 class ui:
 	listcache = {}
@@ -158,6 +162,7 @@ class ui:
 			
 			# Actions - providing an index for this (and thus caching it) may cause the list not to get updated properly
 			if listType.lower() == "actionoptionlist": results = self.factory.act.getActionOptionUIList (args, valuesDict)
+			if listType.lower() == "actionoptionlist_v2": results = self.factory.actv2.getActionOptionUIList (args, valuesDict)
 		
 			# Variables
 			if listType.lower() == "variableactions": results = self._getActionsForVariable (args, valuesDict)
@@ -971,6 +976,10 @@ class ui:
 			allowUi = False
 			if ext.valueValid (args, "allowui", True): 
 				if args["allowui"].lower() == "true": allowUi = True
+			
+			if int(valuesDict[args["srcfield"]]) not in indigo.devices:
+				self.logger.error ("Referencing device ID {0} but that device is no longer an Indigo device.  Please change the device reference or remove this plugin device to prevent this error".format(valuesDict[args["srcfield"]]))
+				return ret
 				
 			dev = indigo.devices[int(valuesDict[args["srcfield"]])]
 		
@@ -1051,6 +1060,10 @@ class ui:
 			if ext.valueValid (args, "allowui", True): 
 				if args["allowui"].lower() == "true": allowUi = True
 		
+			if int(valuesDict[args["srcfield"]]) not in indigo.devices:
+				self.logger.error ("Asked to get actions for device id {0} but that device no longer exists in Indigo, please change the device configuration to point elsewhere.".format(valuesDict[args["srcfield"]]))
+				return ret
+				
 			dev = indigo.devices[int(valuesDict[args["srcfield"]])]
 		
 			retList = []
@@ -1079,6 +1092,11 @@ class ui:
 		
 		try:		
 			if ext.valueValid (args, "srcfield", True) == False: return ret		
+			
+			if int(valuesDict[args["srcfield"]]) not in indigo.devices:
+				self.logger.error ("Referencing device ID {0} but that device is no longer an Indigo device.  Please change the device reference or remove this plugin device to prevent this error".format(valuesDict[args["srcfield"]]))
+				return ret
+			
 			dev = indigo.devices[int(valuesDict[args["srcfield"]])]
 	
 			retList = self.getAttributesForDevice (dev)
@@ -1211,6 +1229,30 @@ class ui:
 			return ret
 		
 		return retList
+	
+	################################################################################
+	# JSON LISTS
+	################################################################################	
+	
+	#
+	# Create JSON array from array
+	#
+	
+	#
+	# Create JSON array from UI list
+	#
+	
+	
+	#
+	# Create a UI list from JSON array
+	#
+	
+	#
+	# Create a hash key if needed for JSON encoding/decoding
+	#
+	def createHashKey(self, keyString):
+		hashKey = hashlib.sha256(keyString.encode('ascii', 'ignore')).digest().encode("hex")  # [0:16]
+		return hashKey
 	
 	
 	################################################################################

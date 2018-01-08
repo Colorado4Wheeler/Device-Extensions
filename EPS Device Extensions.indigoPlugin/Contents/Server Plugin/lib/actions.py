@@ -1,6 +1,6 @@
 # eps.actions - Manage and execute actions
 #
-# Copyright (c) 2016 ColoradoFourWheeler / EPS
+# Copyright (c) 2018 ColoradoFourWheeler / EPS
 #
 
 import indigo
@@ -351,7 +351,7 @@ class actions:
 					
 				except Exception as e:
 					self.logger.error (ext.getException(e))	
-					self.factory.plug.actionGotException (action, obj.id, args, e)
+					self.factory.plug.actionGotException (action, obj.id, args, e, plugin.pluginDisplayName)
 					
 				if ret is not None and ret != "":
 					self.factory.plug.actionReturnedValue (action, obj.id, args, ret)
@@ -492,7 +492,7 @@ class actions:
 					
 				except Exception as e:
 					self.logger.error (ext.getException(e))	
-					self.factory.plug.actionGotException (action, id, props, e)
+					self.factory.plug.actionGotException (action, id, props, e, plugin.pluginDisplayName)
 				
 				if ret is not None and ret != "":
 					self.factory.plug.actionReturnedValue (action, id, props, ret)
@@ -586,6 +586,8 @@ class actions:
 				propsDict["showWarning" + method] = False
 				propsDict["showFieldWarning" + method] = False
 				
+				indigo.server.log("1")
+				
 				if objType == "variable":	
 					if ext.valueValid (propsDict, self.VAR + method, True):
 						# No sense proceeding here unless they selected an action so we know what options to turn on
@@ -621,7 +623,10 @@ class actions:
 										fieldIdx = fieldIdx + 1
 						
 				elif objType == "device":
+					indigo.server.log("2")
+					indigo.server.log(self.DEV + method)
 					if ext.valueValid (propsDict, self.DEV + method, True):
+						indigo.server.log("3")
 						# No sense proceeding here unless they selected an action so we know what options to turn on
 						if ext.valueValid (propsDict, self.DEV_ACTION + method, True):								
 							dev = indigo.devices[int(propsDict[self.DEV + method])]
@@ -639,6 +644,7 @@ class actions:
 											for field in action["ConfigUI"]["Fields"]:
 												propsDict = self._addFieldToUI (propsDict, dev, action, field, method, fieldIdx)
 												fieldIdx = fieldIdx + 1
+												indigo.server.log("4")
 									
 							# In case our actions caused the developer warning, turn off all field options
 							if propsDict["showWarning" + method] or propsDict["showFieldWarning" + method]:

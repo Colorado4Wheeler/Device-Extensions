@@ -1,6 +1,6 @@
 # eps.plug - Mirrors definitions from Indigo API and passes them to other routines if/when needed
 #
-# Copyright (c) 2016 ColoradoFourWheeler / EPS
+# Copyright (c) 2018 ColoradoFourWheeler / EPS
 #
 
 import indigo
@@ -228,8 +228,9 @@ class plug:
 			while True:
 				self._callBack (BEFORE, [])
 				
-				if "update" in dir(self.factory):
-					self.factory.update.check (False, False)
+				# Removed any update checking as of 2.2.1 because the Indigo Plugin Store renders is obsolete
+				#if "update" in dir(self.factory):
+				#	self.factory.update.check (False, False)
 					
 				if "devices" in dir(self.factory):
 					self.factory.devices.runConcurrentThread()
@@ -995,9 +996,13 @@ class plug:
 			
 			retval = self._callBack (AFTER, [valuesDict, typeId, deviceId])
 			if retval is not None:
-				if "success" in retval: success = retval["success"]
-				if "valuesDict" in retval: valuesDict = retval["valuesDict"]
-				if "errorDict" in retval: errorDict = retval["errorDict"]
+				success = retval[0]
+				valuesDict = retval[1]
+				errorDict = retval[2]
+				#if "success" in retval: success = retval["success"]
+				#if "valuesDict" in retval: valuesDict = retval["valuesDict"]
+				#if "errorDict" in retval: errorDict = retval["errorDict"]
+				
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
@@ -1201,6 +1206,7 @@ class plug:
 			
 			if "cond" in dir(self.factory): valuesDict = self.factory.cond.setUIDefaults (valuesDict)
 			if "act" in dir(self.factory): valuesDict = self.factory.act.setUIDefaults (valuesDict)
+			if "actv2" in dir(self.factory): valuesDict = self.factory.actv2.setUIDefaults (valuesDict)
 			
 			retval = self._callBack (AFTER, [valuesDict, typeId, devId])
 			if retval is not None: valuesDict = retval
@@ -1226,16 +1232,81 @@ class plug:
 			self.logger.error (ext.getException(e))		
 			
 	# An action that ran got an exception
-	def actionGotException (self, action, id, props, e):
+	def actionGotException (self, action, id, props, e, pluginDisplayName):
 		try:
 			self._callBack (BEFORE, [])	
 			
-			self.logger.error ("Running an action resulted in an exception.  While this may appear to come from {0} it is actually coming from the action belonging to the plugin being called!".format(self.factory.plugin.pluginDisplayName) )
+			self.logger.error ("Running an action resulted in an exception.  While this may appear to come from {0} it is actually coming from the action belonging to the plugin '{1}' being called!".format(self.factory.plugin.pluginDisplayName, pluginDisplayName) )
+			#self.logger.error (unicode(action))	
+			#self.logger.error (unicode(props))
+			#self.logger.error (unicode(e))
 			
 			self._callBack (AFTER, [])
 			
 		except Exception as e:
-			self.logger.error (ext.getException(e))		
+			self.logger.error (ext.getException(e))	
+			
+	# If adding standard action form data to a list in JSON format
+	def actionAddToListButton (self, valuesDict, typeId, devId):	
+		try:
+			errorsDict = indigo.Dict()
+			
+			ret = self._callBack (BEFORE, [valuesDict, typeId, devId])
+			if ret:
+				if len(ret) == 1:
+					valuesDict = ret
+				elif len(ret) == 2:
+					return ret[0], ret[1]
+				
+			ret = self.factory.actv2.actionAddToListButton (valuesDict, typeId, devId)
+			if ret:
+				if len(ret) == 1:
+					valuesDict = ret
+				elif len(ret) == 2:
+					return ret[0], ret[1]
+						
+			self._callBack (AFTER, [valuesDict, typeId, devId])
+			if ret:
+				if len(ret) == 1:
+					valuesDict = ret
+				elif len(ret) == 2:
+					return ret[0], ret[1]
+					
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return valuesDict, errorsDict
+
+	# If updating standard action form data to the JSON list
+	def actionUpdateListButton (self, valuesDict, typeId, devId):
+		try:
+			errorsDict = indigo.Dict()
+			
+			ret = self._callBack (BEFORE, [valuesDict, typeId, devId])
+			if ret:
+				if len(ret) == 1:
+					valuesDict = ret
+				elif len(ret) == 2:
+					return ret[0], ret[1]
+				
+			ret = self.factory.actv2.actionUpdateListButton (valuesDict, typeId, devId)
+			if ret:
+				if len(ret) == 1:
+					valuesDict = ret
+				elif len(ret) == 2:
+					return ret[0], ret[1]
+						
+			self._callBack (AFTER, [valuesDict, typeId, devId])
+			if ret:
+				if len(ret) == 1:
+					valuesDict = ret
+				elif len(ret) == 2:
+					return ret[0], ret[1]
+					
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return valuesDict, errorsDict
 
 	################################################################################
 	# EPS CONDITION HANDLERS
@@ -1285,11 +1356,117 @@ class plug:
 	
 
 
+	################################################################################
+	# ADVANCED PLUGIN ACTIONS MENU (v3.3.0 plugin)
+	################################################################################
 
+	# Advanced Plugin Actions: Device Selected
+	def advHealthCheck (self, logOutput = "debug"):
+		try:
+			self.logger.threaddebug ("Advanced plugin menu performing health check on plugin and outputting to {0}".format(logOutput))
+			
+			self._callBack (BEFORE, [logOutput])
+			
+			self._callBack (AFTER, [logOutput])		
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
 
+	# Advanced Plugin Actions: Device Selected
+	def advPluginDeviceSelected (self, valuesDict, typeId):
+		try:
+			self.logger.threaddebug ("Advanced plugin menu validating a device was selected")
+		
+			ret = self._callBack (BEFORE, [valuesDict, typeId])	
+			if ret:
+				if len(ret) == 1:
+					valuesDict = ret
+				elif len(ret) == 2:
+					return ret[0], ret[1]
+			
+			valuesDict["showDeviceActions"] = "true"
+			
+			ret = self._callBack (AFTER, [valuesDict, typeId])	
+			if ret:
+				if len(ret) == 1:
+					valuesDict = ret
+				elif len(ret) == 2:
+					return ret[0], ret[1]
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return valuesDict	
 
-
-
+	# Advanced Device Actions
+	def btnAdvDeviceAction (self, valuesDict, typeId):		
+		try:
+			self.logger.threaddebug ("Advanced plugin menu performing '{0}' on device {1}".format(valuesDict["deviceActions"], valuesDict["device"]))
+		
+			ret = self._callBack (BEFORE, [valuesDict, typeId])	
+			if ret:
+				if len(ret) == 1:
+					valuesDict = ret
+				elif len(ret) == 2:
+					return ret[0], ret[1]
+					
+			if valuesDict["deviceActions"] == "states":
+				dev = indigo.devices[int(valuesDict["device"])]
+				self.logger.info (unicode(dev.states))
+				return valuesDict
+			elif valuesDict["deviceActions"] == "props":
+				dev = indigo.devices[int(valuesDict["device"])]
+				self.logger.info (unicode(dev.pluginProps))
+				return valuesDict
+			elif valuesDict["deviceActions"] == "data":
+				dev = indigo.devices[int(valuesDict["device"])]
+				self.logger.info (unicode(dev))
+				return valuesDict
+				
+			ret = self._callBack (AFTER, [valuesDict, typeId])	
+			if ret:
+				if len(ret) == 1:
+					valuesDict = ret
+				elif len(ret) == 2:
+					return ret[0], ret[1]
+			
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		#return (success, valuesDict, errorsDict)	
+		return valuesDict	
+		
+	# Advanced Plugin Actions
+	def btnAdvPluginAction (self, valuesDict, typeId):		
+		try:
+			self.logger.threaddebug ("Advanced plugin menu performing '{0}' on plugin".format(valuesDict["pluginActions"]))
+		
+			ret = self._callBack (BEFORE, [valuesDict, typeId])	
+			if ret:
+				if len(ret) == 1:
+					valuesDict = ret
+				elif len(ret) == 2:
+					return ret[0], ret[1]
+					
+			if valuesDict["pluginActions"] == "data":
+				self.pluginMenuSupportData ()
+			elif valuesDict["pluginActions"] == "compdata":
+				self.pluginMenuSupportDataEx ()
+			elif valuesDict["pluginActions"] == "health":					
+				self.advHealthCheck("info")
+				
+			ret = self._callBack (AFTER, [valuesDict, typeId])	
+			if ret:
+				if len(ret) == 1:
+					valuesDict = ret
+				elif len(ret) == 2:
+					return ret[0], ret[1]
+				
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		#return (success, valuesDict, errorsDict)	
+		return valuesDict	
 
 
 

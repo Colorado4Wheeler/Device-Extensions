@@ -401,6 +401,10 @@ class Plugin(indigo.PluginBase):
 		try:
 			if dev.deviceTypeId == "epsdecon":
 				if dev.pluginProps["chdevice"] and ext.valueValid (dev.pluginProps, "device", True) and ext.valueValid (dev.pluginProps, "states", True):
+					if int(dev.pluginProps["device"]) not in indigo.devices:
+						self.logger.error ("Device '{0}' is referencing device ID {1} but that device is no longer an Indigo device.  Please change the device reference or remove '{0}' to prevent this error".format(dev.name, dev.pluginProps["device"]))
+						return False
+				
 					child = indigo.devices[int(dev.pluginProps["device"])]
 					
 					if dev.pluginProps["states"][0:5] != "attr_": 
@@ -998,9 +1002,17 @@ class Plugin(indigo.PluginBase):
 			states = iutil.updateState ("hightemp", calcs.getHighFloatValue (child, "temperatureInput1", parent.states["hightemp"]), states)
 			states = iutil.updateState ("lowtemp", calcs.getHighFloatValue (child, "temperatureInput1", parent.states["lowtemp"]), states)
 
+			#indigo.server.log(unicode(child))
+
+			# Nest plugin 2.0.50+ - added in 2.0.3, the "humidityInput1" no longer exists in favor of "humidity"
 			if "humidity" in child.states:
+				states = iutil.updateState ("highhumidity", calcs.getHighFloatValue (child, "humidity", parent.states["highhumidity"]), states)
+				states = iutil.updateState ("lowhumidity", calcs.getHighFloatValue (child, "humidity", parent.states["lowhumidity"]), states)
+				
+			# Nest plugin prior to 2.0.50 - modified in 2.0.3	
+			if "humidityInput1" in child.states:
 				states = iutil.updateState ("highhumidity", calcs.getHighFloatValue (child, "humidityInput1", parent.states["highhumidity"]), states)
-				states = iutil.updateState ("lowhumidity", calcs.getHighFloatValue (child, "humidityInput1", parent.states["lowhumidity"]), states)
+				states = iutil.updateState ("lowhumidity", calcs.getHighFloatValue (child, "humidityInput1", parent.states["lowhumidity"]), states)	
 			
 			if child.states["hvacFanModeIsAuto"]:
 				states = iutil.updateState ("fanOn", False, states)
@@ -1638,17 +1650,24 @@ class Plugin(indigo.PluginBase):
 				return
 			
 			value = float(value)
+			factor = 1 # 1 = 100001 or 100% of normal lux values
+			
+			if "luxfactor" in parent.pluginProps:
+				if parent.pluginProps["luxfactor"] != "0" and parent.pluginProps["luxfactor"] != "":
+					self.logger.threaddebug ("'{0}' has a lux factor of '{1}', adjusting values".format(parent.name, parent.pluginProps["luxfactor"]))
+					factor = float(parent.pluginProps["luxfactor"])
+			
 			term = "Direct Sunlight"
 			
-			if value < 100001: term = "Direct Sunlight"
-			if value < 30001: term = "Cloudy Outdoors"
-			if value < 10001: term = "Dim Outdoors"
-			if value < 5001: term = "Bright Indoors"
-			if value < 1001: term = "Normal Indoors"
-			if value < 401: term = "Dim Indoors"
-			if value < 201: term = "Dark Indoors"
-			if value < 51: term = "Very Dark"
-			if value < 11: term = "Pitch Black"
+			if value < (100001 * factor): term = "Direct Sunlight"
+			if value < (30001 * factor): term = "Cloudy Outdoors"
+			if value < (10001 * factor): term = "Dim Outdoors"
+			if value < (5001 * factor): term = "Bright Indoors"
+			if value < (1001 * factor): term = "Normal Indoors"
+			if value < (401 * factor): term = "Dim Indoors"
+			if value < (201 * factor): term = "Dark Indoors"
+			if value < (51 * factor): term = "Very Dark"
+			if value < (11 * factor): term = "Pitch Black"
 			
 			if value < 1001:
 				parent.updateStateImageOnServer(indigo.kStateImageSel.LightSensor)

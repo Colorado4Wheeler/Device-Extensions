@@ -1,7 +1,14 @@
 Release Notes
 ==========
 
-Version 2.0
+Version 2.0.3
+---------------
+
+* Added new field to the conversion for Lux to Word Value called Adjustment, this value will change the word value based on the upper limit of your light sensor.  For example, the Fibaro motion sensor only detects up to 32,767 lux (normally lux is detected up to 100,001), so entering .32767 in this adjustment field will change the calculation to be more accurate based on the equipment reporting the value.
+* Added lux adjustment according to the value of the new lux Adjustment field, a value of 1 indicates that the sensor can go to the full 100,001 lux (direct sunlight)
+* Fixed a bug when starting a device or editing a device that did not check if a referenced device ID was valid before trying to load the device, resulting in an error.  Now it will check beforehand and log an error to let the user know that there is an invalid Indigo device being referenced by a plugin device
+
+Version 2.0.2
 ---------------
 
 * Official Indigo 7 release
