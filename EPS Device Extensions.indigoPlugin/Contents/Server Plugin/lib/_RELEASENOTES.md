@@ -1,7 +1,17 @@
 Release Notes
 ==========
 
-Until 2.3.1 these changes were pseudo logged elsewhere, this represents the official library release notes since then.
+Version 2.4.4
+---------------
+
+* Added new custom list generator keyword "stateicons" to retrieve a list of current Indigo device state icons
+* Added ui.getIndigoIconForKeyword to resolve keywords from the new custom list function _getStateIconsList so that the keyword resolves to an Indigo icon
+* Added Homebridge Buddy API library for other plugins to call on and access the HBB functions
+
+Version 2.4.3
+---------------
+
+* Added watchedItemChanged_ShowAllChanges to cache for debugging purposes to see why a trouble device may fire on a regular basis (i.e. Nest)
 
 Version 2.4.2
 ---------------
@@ -35,5 +45,7 @@ Version 2.3.2
 
 Version 2.3.1
 ---------------
+
+NOTE: Until 2.3.1 these changes were pseudo logged elsewhere, this represents the official library release notes since then.
 
 * Changed a devices divide by zero exception by checking for a zero/null condition before trying to calculate runtime percentage in runConcurrentThread (found in Homebridge Buddy, distributed change with 1.0.6)

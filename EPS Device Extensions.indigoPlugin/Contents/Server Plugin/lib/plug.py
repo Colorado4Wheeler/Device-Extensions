@@ -116,6 +116,7 @@ class plug:
 				if diff > 3:
 					self.lastDeviceLoaded = False
 					self.logger.info (self.factory.plugin.pluginDisplayName + " is loaded and ready to use")
+					#self.factory.memory_summary()
 					return True
 				else:
 					return False
@@ -694,6 +695,8 @@ class plug:
 	# Device protocol command received (Custom)
 	def protocolCommandReceivedFromCache (self, dev, cmd, type):
 		try:
+			self.logger.threaddebug ("Plugin detected protocol '{0}' action received from device node {1}".format(cmd[1], cmd[0]))
+			
 			self._callBack (BEFORE, [dev, cmd, type])	
 			
 			self._callBack (AFTER, [dev, cmd, type])
@@ -704,6 +707,8 @@ class plug:
 	# Device protocol command sent (Custom)
 	def protocolCommandSentFromCache (self, dev, cmd, type):
 		try:
+			self.logger.threaddebug ("Plugin detected protocol '{0}' action sent from device node {1}".format(cmd[1], cmd[0]))
+			
 			self._callBack (BEFORE, [dev, cmd, type])	
 			
 			self._callBack (AFTER, [dev, cmd, type])

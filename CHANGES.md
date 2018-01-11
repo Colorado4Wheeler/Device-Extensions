@@ -1,6 +1,14 @@
 Release Notes
 ==========
 
+Version 2.0.4 (Development Release)
+---------------
+
+* Added new Thermostat Wrapper device to allow you to either wrap an existing thermostat and re-assign select fields and functions or to create a thermostat from device states, variables and action groups (created as an option to use with voice control such as Homebridge Buddy)
+* Improved idle performance by 100%: CPU performance at idle now at 50% of previous after moving extraneous concurrent threading calls into a conditional variable instead.  Before the fix the idle CPU usage of the plugin was between 0.6% and 0.8% and now is between 0.3% and 0.4%
+* Added global variables for thermostat preset expiration times and high/low reset times to take them out of concurrent threading where it was checking all devices of that type every thread occurrence
+* Fixed issue in the concurrent thread that could cause an error if a device of a certain type had not been created by the user
+
 Version 2.0.3
 ---------------
 

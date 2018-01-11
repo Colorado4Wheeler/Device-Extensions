@@ -306,11 +306,16 @@ class cache:
 	def watchedItemChanges (self, origObj, newObj):
 		ret = []
 		
+		#indigo.server.log(origObj.name)
+		#return ret
+		# This routine takes .2 to .4 extra CPU, without it it's 1.2 instead of 1.6 to 1.8
+		
 		try:
 			obj = self.items.isInCache (newObj.id)
 			
 			if obj:
 				self.logger.threaddebug("'{0}' is cached, checking for changes".format(newObj.name))
+				#self.watchedItemChanged_ShowAllChanges (origObj, newObj)
 				ret = obj.getWatchedByChanges (origObj, newObj)
 								
 			else:
@@ -320,6 +325,24 @@ class cache:
 			self.logger.error (ext.getException(e))	
 			
 		return ret
+		
+	#
+	# Compare two devices and log the changes between them
+	#
+	def watchedItemChanged_ShowAllChanges (self, origObj, newObj):
+		try:
+			for s in newObj.states:
+				if s in origObj.states:
+					if newObj.states[s] != origObj.states[s]:
+						self.logger.debug ("State {0} was {1} and is now {2}".format(s, unicode(origObj.states[s]), unicode(newObj.states[s])))
+						
+			for s in newObj.pluginProps:
+				if s in origObj.pluginProps:
+					if newObj.pluginProps[s] != origObj.pluginProps[s]:
+						self.logger.debug ("Property {0} was {1} and is now {2}".format(s, unicode(origObj.pluginProps[s]), unicode(newObj.pluginProps[s])))
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
 
 			
 	#

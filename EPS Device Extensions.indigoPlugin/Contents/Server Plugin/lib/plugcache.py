@@ -1,5 +1,7 @@
 # lib.plugcache - Reads plugin information into a re-usable cache
 #
+# Memory usage: ~10MB for full plugin data cache / ~35MB for everything as of 1/9/2017
+#
 # Copyright (c) 2018 ColoradoFourWheeler / ext
 #
 
@@ -27,7 +29,6 @@ fieldTypeTemplates = {
 	u"serialport": u"_configUiField_serialPort.xml"
 }
 
-
 class plugfilter:
 	#
 	# Init
@@ -44,7 +45,7 @@ class plugfilter:
 class plugcache:
 	
 	pluginCache = indigo.Dict()
-
+	
 	#
 	# Init
 	#
@@ -513,7 +514,7 @@ class plugcache:
 			#self.addIndigoActions ()
 			
 			self.logger.debug ("Refreshing plugin information")
-		
+			
 			base = indigo.server.getInstallFolderPath() + "/Plugins"
 			plugins = glob.glob(base + "/*.indigoPlugin")	
 			plugInfo = ''
@@ -557,7 +558,8 @@ class plugcache:
 						pluginXML["actions"] = self._parseActionsXML(plugin + "/Contents/Server Plugin/Actions.xml")
 					
 					try:
-						plugInfo["xml"] = pluginXML
+						plugInfo["xml"] = pluginXML # Represents about 10MB of plugin memory use
+						#indigo.server.log(unicode(plugInfo))
 						
 						self.pluginCache[plugInfo["id"]] = plugInfo
 						
@@ -576,11 +578,9 @@ class plugcache:
 			#self._parseDevicesXML(kDevicesFilename)
 			#self._parseEventsXML(kEventsFilename)
 			#self._parseActionsXML(kActionsFilename)
-		
-			X = 1
 			
+			#self.factory.memory_summary()
 			
-		
 		except Exception as e:
 			#raise
 			self.logger.error (ext.getException(e))	

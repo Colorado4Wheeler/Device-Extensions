@@ -169,6 +169,9 @@ class ui:
 			
 			# Server
 			if listType.lower() == "serveractions": results = self._getActionsForServer (args, valuesDict)
+			
+			# State Icons
+			if listType.lower() == "stateicons": results = self._getStateIconsList (args, valuesDict)
 		
 			# Devices
 			if listType.lower() == "filtereddevices": results = self._getFilteredDeviceList (args, valuesDict)
@@ -345,10 +348,93 @@ class ui:
 			
 		return currentVal
 	
-	
 	################################################################################
 	# LIST GENERATORS
 	################################################################################	
+
+	#
+	# Indigo device state icons
+	#
+	def _getStateIconsList (self, args, valuesDict):
+		ret = [("default", "No data")]
+			
+		try:
+			retList = []
+			
+			retList.append (('Auto', 'automatic (default)'))
+			retList.append (('None', 'no image icon'))
+			retList.append (('Error', 'show an error device image icon'))
+			retList.append (('Custom', 'plugin defined custom image icon (not yet implemented)'))
+			retList.append (('PowerOff', 'power off icon'))
+			retList.append (('PowerOn', 'power on icon'))
+			retList.append (('DimmerOff', 'dimmer or bulb off icon'))
+			retList.append (('DimmerOn', 'dimmer or bulb on icon'))
+			retList.append (('FanOff', 'fan off icon'))
+			retList.append (('FanLow', 'fan on (low) icon'))
+			retList.append (('FanMedium', 'fan on (medium) icon'))
+			retList.append (('FanHigh', 'fan on (high) icon'))
+			retList.append (('SprinklerOff', 'sprinkler off icon'))
+			retList.append (('SprinklerOn', 'sprinkler off icon'))
+			retList.append (('HvacOff', 'thermostat off icon'))
+			retList.append (('HvacCoolMode', 'thermostat in cool mode icon'))
+			retList.append (('HvacHeatMode', 'thermostat in heat mode icon'))
+			retList.append (('HvacAutoMode', 'thermostat in auto mode icon'))
+			retList.append (('HvacFanOn', 'thermostat with fan blower on only icon'))
+			retList.append (('HvacCooling', 'thermostat that is cooling icon'))
+			retList.append (('HvacHeating', 'thermostat that is heating icon'))
+			retList.append (('SensorOff', 'generic sensor off icon (gray circle)'))
+			retList.append (('SensorOn', 'generic sensor on icon (green circle)'))
+			retList.append (('SensorTripped', 'generic sensor tripped icon (red circle)'))
+			retList.append (('EnergyMeterOff', 'energy meter off icon'))
+			retList.append (('EnergyMeterOn', 'energy meter on icon'))
+			retList.append (('LightSensor', 'light meter off icon'))
+			retList.append (('LightSensorOn', 'light meter on icon'))
+			retList.append (('MotionSensor', 'motion sensor icon'))
+			retList.append (('MotionSensorTripped', 'motion sensor tripped/activated icon'))
+			retList.append (('DoorSensorClosed', 'door sensor closed icon'))
+			retList.append (('DoorSensorOpened', 'door sensor opened icon'))
+			retList.append (('WindowSensorClosed', 'window sensor closed icon'))
+			retList.append (('WindowSensorOpened', 'window sensor opened icon'))
+			retList.append (('TemperatureSensor', 'temperature sensor icon'))
+			retList.append (('TemperatureSensorOn', 'temperature sensor on icon'))
+			retList.append (('HumiditySensor', 'humidity sensor icon'))
+			retList.append (('HumiditySensorOn', 'humidity sensor on icon'))
+			retList.append (('HumidifierOff', 'humidifier turned off icon'))
+			retList.append (('HumidifierOn', 'humidifier turned on icon'))
+			retList.append (('DehumidifierOff', 'dehumidifier turned off icon'))
+			retList.append (('DehumidifierOn', 'dehumidifier turned on icon'))
+			retList.append (('WindSpeedSensor', 'wind speed sensor icon'))
+			retList.append (('WindSpeedSensorLow', 'wind speed sensor (low) icon'))
+			retList.append (('WindSpeedSensorMedium', 'wind speed sensor (medium) icon'))
+			retList.append (('WindSpeedSensorHigh', 'wind speed sensor (high) icon'))
+			retList.append (('WindDirectionSensor', 'wind direction sensor icon'))
+			retList.append (('WindDirectionSensorNorth', 'wind direction sensor (N) icon'))
+			retList.append (('WindDirectionSensorNorthEast', 'wind direction sensor (NE) icon'))
+			retList.append (('WindDirectionSensorEast', 'wind direction sensor (E) icon'))
+			retList.append (('WindDirectionSensorSouthEast', 'wind direction sensor (SE) icon'))
+			retList.append (('WindDirectionSensorSouth', 'wind direction sensor (S) icon'))
+			retList.append (('WindDirectionSensorSouthWest', 'wind direction sensor (SW) icon'))
+			retList.append (('WindDirectionSensorWest', 'wind direction sensor (W) icon'))
+			retList.append (('WindDirectionSensorNorthWest', 'wind direction sensor (NW) icon'))
+			retList.append (('BatteryCharger', 'battery charger icon'))
+			retList.append (('BatteryChargerOn', 'battery charger on icon'))
+			retList.append (('BatteryLevel', 'battery level icon'))
+			retList.append (('BatteryLevelLow', 'battery level (low) icon'))
+			retList.append (('BatteryLevel25', 'battery level (25%) icon'))
+			retList.append (('BatteryLevel50', 'battery level (50%) icon'))
+			retList.append (('BatteryLevel75', 'battery level (75%) icon'))
+			retList.append (('BatteryLevelHigh', 'battery level (full) icon'))
+			retList.append (('TimerOff', 'timer off icon'))
+			retList.append (('TimerOn', 'timer on icon'))
+			retList.append (('AvStopped', 'A/V stopped icon'))
+			retList.append (('AvPaused', 'A/V paused icon'))
+			retList.append (('AvPlaying', 'A/V playing icon'))
+		
+			if len(retList) > 0: return retList
+	
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			return ret
 
 	#
 	# Filtered device list
@@ -1290,6 +1376,85 @@ class ui:
 	################################################################################
 	# LOOKUPS
 	################################################################################	
+	
+	#
+	# Indigo icon keyword to Indigo icon
+	#
+	def getIndigoIconForKeyword (self, keyword):
+		try:
+			if keyword == 'Auto': return indigo.kStateImageSel.Auto
+			if keyword == 'None': return indigo.kStateImageSel.None
+			if keyword == 'Error': return indigo.kStateImageSel.Error
+			if keyword == 'Custom': return indigo.kStateImageSel.Custom
+			if keyword == 'PowerOff': return indigo.kStateImageSel.PowerOff
+			if keyword == 'PowerOn': return indigo.kStateImageSel.PowerOn
+			if keyword == 'DimmerOff': return indigo.kStateImageSel.DimmerOff
+			if keyword == 'DimmerOn': return indigo.kStateImageSel.DimmerOn
+			if keyword == 'FanOff': return indigo.kStateImageSel.FanOff
+			if keyword == 'FanLow': return indigo.kStateImageSel.FanLow
+			if keyword == 'FanMedium': return indigo.kStateImageSel.FanMedium
+			if keyword == 'FanHigh': return indigo.kStateImageSel.FanHigh
+			if keyword == 'SprinklerOff': return indigo.kStateImageSel.SprinklerOff
+			if keyword == 'SprinklerOn': return indigo.kStateImageSel.SprinklerOn
+			if keyword == 'HvacOff': return indigo.kStateImageSel.HvacOff
+			if keyword == 'HvacCoolMode': return indigo.kStateImageSel.HvacCoolMode
+			if keyword == 'HvacHeatMode': return indigo.kStateImageSel.HvacHeatMode
+			if keyword == 'HvacAutoMode': return indigo.kStateImageSel.HvacAutoMode
+			if keyword == 'HvacFanOn': return indigo.kStateImageSel.HvacFanOn
+			if keyword == 'HvacCooling': return indigo.kStateImageSel.HvacCooling
+			if keyword == 'HvacHeating': return indigo.kStateImageSel.HvacHeating
+			if keyword == 'SensorOff': return indigo.kStateImageSel.SensorOff
+			if keyword == 'SensorOn': return indigo.kStateImageSel.SensorOn
+			if keyword == 'SensorTripped': return indigo.kStateImageSel.SensorTripped
+			if keyword == 'EnergyMeterOff': return indigo.kStateImageSel.EnergyMeterOff
+			if keyword == 'EnergyMeterOn': return indigo.kStateImageSel.EnergyMeterOn
+			if keyword == 'LightSensor': return indigo.kStateImageSel.LightSensor
+			if keyword == 'LightSensorOn': return indigo.kStateImageSel.LightSensorOn
+			if keyword == 'MotionSensor': return indigo.kStateImageSel.MotionSensor
+			if keyword == 'MotionSensorTripped': return indigo.kStateImageSel.MotionSensorTripped
+			if keyword == 'DoorSensorClosed': return indigo.kStateImageSel.DoorSensorClosed
+			if keyword == 'DoorSensorOpened': return indigo.kStateImageSel.DoorSensorOpened
+			if keyword == 'WindowSensorClosed': return indigo.kStateImageSel.WindowSensorClosed
+			if keyword == 'WindowSensorOpened': return indigo.kStateImageSel.WindowSensorOpened
+			if keyword == 'TemperatureSensor': return indigo.kStateImageSel.TemperatureSensor
+			if keyword == 'TemperatureSensorOn': return indigo.kStateImageSel.TemperatureSensorOn
+			if keyword == 'HumiditySensor': return indigo.kStateImageSel.HumiditySensor
+			if keyword == 'HumiditySensorOn': return indigo.kStateImageSel.HumiditySensorOn
+			if keyword == 'HumidifierOff': return indigo.kStateImageSel.HumidifierOff
+			if keyword == 'HumidifierOn': return indigo.kStateImageSel.HumidifierOn
+			if keyword == 'DehumidifierOff': return indigo.kStateImageSel.DehumidifierOff
+			if keyword == 'DehumidifierOn': return indigo.kStateImageSel.DehumidifierOn
+			if keyword == 'WindSpeedSensor': return indigo.kStateImageSel.WindSpeedSensor
+			if keyword == 'WindSpeedSensorLow': return indigo.kStateImageSel.WindSpeedSensorLow
+			if keyword == 'WindSpeedSensorMedium': return indigo.kStateImageSel.WindSpeedSensorMedium
+			if keyword == 'WindSpeedSensorHigh': return indigo.kStateImageSel.WindSpeedSensorHigh
+			if keyword == 'WindDirectionSensor': return indigo.kStateImageSel.WindDirectionSensor
+			if keyword == 'WindDirectionSensorNorth': return indigo.kStateImageSel.WindDirectionSensorNorth
+			if keyword == 'WindDirectionSensorNorthEast': return indigo.kStateImageSel.WindDirectionSensorNorthEast
+			if keyword == 'WindDirectionSensorEast': return indigo.kStateImageSel.WindDirectionSensorEast
+			if keyword == 'WindDirectionSensorSouthEast': return indigo.kStateImageSel.WindDirectionSensorSouthEast
+			if keyword == 'WindDirectionSensorSouth': return indigo.kStateImageSel.WindDirectionSensorSouth
+			if keyword == 'WindDirectionSensorSouthWest': return indigo.kStateImageSel.WindDirectionSensorSouthWest
+			if keyword == 'WindDirectionSensorWest': return indigo.kStateImageSel.WindDirectionSensorWest
+			if keyword == 'WindDirectionSensorNorthWest': return indigo.kStateImageSel.WindDirectionSensorNorthWest
+			if keyword == 'BatteryCharger': return indigo.kStateImageSel.BatteryCharger
+			if keyword == 'BatteryChargerOn': return indigo.kStateImageSel.BatteryChargerOn
+			if keyword == 'BatteryLevel': return indigo.kStateImageSel.BatteryLevel
+			if keyword == 'BatteryLevelLow': return indigo.kStateImageSel.BatteryLevelLow
+			if keyword == 'BatteryLevel25': return indigo.kStateImageSel.BatteryLevel25
+			if keyword == 'BatteryLevel50': return indigo.kStateImageSel.BatteryLevel50
+			if keyword == 'BatteryLevel75': return indigo.kStateImageSel.BatteryLevel75
+			if keyword == 'BatteryLevelHigh': return indigo.kStateImageSel.BatteryLevelHigh
+			if keyword == 'TimerOff': return indigo.kStateImageSel.TimerOff
+			if keyword == 'TimerOn': return indigo.kStateImageSel.TimerOn
+			if keyword == 'AvStopped': return indigo.kStateImageSel.AvStopped
+			if keyword == 'AvPaused': return indigo.kStateImageSel.AvPaused
+			if keyword == 'AvPlaying': return indigo.kStateImageSel.AvPlaying
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return ret
 	
 	#
 	# Built-in Device States in list format

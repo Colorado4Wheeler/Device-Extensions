@@ -20,6 +20,11 @@ import string
 from datetime import date, timedelta
 import urllib2 # for URL device
 from lib import calcs
+import json
+
+from lib.hbb import HomebridgeBuddy
+hbb = HomebridgeBuddy()
+
 
 eps = eps(None)
 
@@ -47,6 +52,9 @@ class Plugin(indigo.PluginBase):
 		eps.loadLibs (self.PLUGIN_LIBS)
 		
 		self.thermostats = []
+		self.resetDevices = [] # Devices that get high/low resets every 24 hours
+		self.thermostatPreset = [] # Thermostats that have active presets to expire
+		
 		
 		
 	################################################################################
@@ -61,6 +69,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def pluginUpgrade (self):
 		try:
+			self.logger.threaddebug ("Checking for plugin upgrades")
+			
 			upgradeSuccess = True
 			
 			if ext.valueValid (self.pluginPrefs, "currentVersion") == False:
@@ -93,58 +103,53 @@ class Plugin(indigo.PluginBase):
 			self.logger.error (ext.getException(e))	
 	
 	#
-	# Concurrent Thread
+	# Concurrent Thread (.6 to .8 CPU)
 	#
 	def onAfter_runConcurrentThread(self):
 		try:
-			# High/low resets
-			resets = []
+			#eps.memory_summary()
 			
-			for devId in eps.cache.pluginItems["epsdeth"]:
-				if devId in indigo.devices:
-					resets.append(devId)
-					
-			for devId in eps.cache.pluginItems["epsdews"]:
-				if devId in indigo.devices:
-					resets.append(devId)		
-					
-			for devId in resets:
-				parent = indigo.devices[devId]
+			# Check any devices that require high/low reset in the local reset cache
+			if len(self.resetDevices) > 0:
+				d = indigo.server.getTime()
 				
-				if "lasthighlowreset" in parent.states: # In case they changed device types on the fly
+				for devDetail in self.resetDevices:
 					needsReset = False
-					if parent.states["lasthighlowreset"] == "":
-						needsReset = True
-					else:
-						d = indigo.server.getTime()
-						if dtutil.dateDiff ("hours", d, str(parent.states["lasthighlowreset"]) + " 00:00:00") >= 24:
-							needsReset = True
-						
-					if needsReset:
-						self.resetHighsLows (parent)
-						
-			# Irrigation timers
-			for devId in eps.cache.pluginItems["epsdeirr"]:
-				self.calculateTimeRemaining (indigo.devices[devId])
-									
-			# Thermostat preset timers
-			for devId in eps.cache.pluginItems["epsdeth"]:
-				if devId in indigo.devices:
-					parent = indigo.devices[devId]
 					
-					presetActive = 0
-					for i in range (1, 5):
-						if parent.states["presetOn" + str(i)]: 
-							presetActive = i
-							break
+					if devDetail["lastreset"] != "":
+						if dtutil.dateDiff ("hours", d, str(devDetail["lastreset"]) + " 00:00:00") >= 24:
+							needsReset = True
+					
+					else:
+						needsReset = True
 							
-					if presetActive > 0:
-						d = indigo.server.getTime()
-						autoOff = datetime.datetime.strptime (parent.states["presetExpires"], "%Y-%m-%d %H:%M:%S")
-						if dtutil.dateDiff ("seconds", autoOff, d) < 1:
-							self.logger.info ("The preset {1} for '{0}' has expired, reverting to pre-preset settings".format(parent.name, str(presetActive)))
-							self.thermostatPresetToggle (parent, presetActive)
+					if needsReset:
+						self.logger.debug ("Resetting highs and lows for device '{0}'".format(devDetail["name"]))
+						if devDetail["id"] in indigo.devices:
+							parent = indigo.devices[devDetail["id"]]
+							self.resetHighsLows (parent)
+			
 		
+			# Irrigation timers (returns quickly if irrigation is idle)
+			if "epsdeirr" in eps.cache.pluginItems:
+				for devId in eps.cache.pluginItems["epsdeirr"]:
+					self.calculateTimeRemaining (indigo.devices[devId])
+					
+			#return here for .3 to .4 CPU
+					
+			# Thermostat preset timers
+			if len(self.thermostatPreset) > 0:
+				d = indigo.server.getTime()
+				
+				for tdev in self.thermostatPreset:
+					needsReset = False
+					
+					if devDetail["expiration"] != "":
+						autoOff = datetime.datetime.strptime (devDetail["expiration"], "%Y-%m-%d %H:%M:%S")
+						if dtutil.dateDiff ("seconds", autoOff, d) < 1:
+							self.logger.info ("The preset {1} for '{0}' has expired, reverting to pre-preset settings".format(devDetail["name"], str(devDetail["preset"])))
+							self.thermostatPresetToggle (parent, presetActive)
+			
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
 	
@@ -202,6 +207,24 @@ class Plugin(indigo.PluginBase):
 							if dev.pluginProps["states"][0:5] != "attr_": ret[int(dev.pluginProps["raindevice"])] = [dev.pluginProps["states"]]
 					
 					if len(states) > 0: ret[int(dev.pluginProps["device"])] = states
+					
+			if dev.deviceTypeId == "thermostat-wrapper":	
+				deviceSettings = json.loads(dev.pluginProps["deviceSettings"])
+				for d in deviceSettings:
+					states = []	
+					
+					if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "": 
+						states.append(d["option1State"])
+						ret[int(d["option1Device"])] = states
+						
+					if d["key"] == "thermostat":
+						child = indigo.devices[int(d["thermostatdevice"])]
+						statelist = ["hvacFanMode", "hvacOperationMode", "setpointCool", "setpointHeat", "temperatureInput1", "temperatureInputsAll", "humidityInput1", "humidityInputsAll"]
+						
+						for s in statelist:
+							if ext.valueValid (child.states, s): states.append (s)
+						
+						ret[int(d["thermostatdevice"])] = states
 										
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
@@ -253,6 +276,7 @@ class Plugin(indigo.PluginBase):
 	def onWatchedStateChanged (self, origDev, newDev, change):
 		try:
 			#indigo.server.log(unicode(change))
+			self.logger.threaddebug ("Running plugin onWatchedStateChanged")
 			
 			parent = indigo.devices[change.parentId]
 			child = indigo.devices[change.childId]
@@ -272,6 +296,7 @@ class Plugin(indigo.PluginBase):
 	def onWatchedAttributeChanged (self, origDev, newDev, change):
 		try:
 			#indigo.server.log(unicode(change))
+			self.logger.threaddebug ("Running plugin onWatchedAttributeChanged")
 			
 			parent = indigo.devices[change.parentId]
 			child = indigo.devices[change.childId]
@@ -290,6 +315,7 @@ class Plugin(indigo.PluginBase):
 	#
 	def onAfter_pluginDevicePropChanged (self, origDev, newDev, changedProps):	
 		try:
+			self.logger.threaddebug ("Running plugin onAfter_pluginDevicePropChanged")
 			self.updateFromPluginDevice (newDev)
 			
 		except Exception as e:
@@ -300,17 +326,101 @@ class Plugin(indigo.PluginBase):
 	#
 	def onAfter_pluginDeviceCreated (self, dev):	
 		try:
+			self.logger.threaddebug ("Running plugin onAfter_pluginDeviceCreated")
+			
 			self.updateFromPluginDevice (dev)
 			
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
 			
 	#
+	# Validate device config
+	#
+	def onAfter_validateDeviceConfigUi(self, valuesDict, typeId, devId):
+		try:
+			errorDict = indigo.Dict()
+			success = True
+			
+			if typeId == "thermostat-wrapper":
+				if "deviceSettings" not in valuesDict:
+					valuesDict["deviceSettings"] = json.dumps([])
+			
+				deviceSettings = json.loads(valuesDict["deviceSettings"])
+				
+				# Set device defaults, we'll change these below if needed
+				valuesDict["NumTemperatureInputs"] 			= "0"
+				valuesDict["NumHumidityInputs"] 			= "0"
+				valuesDict["SupportsHeatSetpoint"] 			= False
+				valuesDict["SupportsCoolSetpoint"] 			= False
+				valuesDict["SupportsHvacOperationMode"] 	= False
+				valuesDict["SupportsHvacFanMode"] 			= False
+				valuesDict["ShowCoolHeatEquipmentStateUI"] 	= False
+				
+				for d in deviceSettings:
+					if d["key"] == "thermostat" and d["thermostatdevice"] != "":
+						if int(d["thermostatdevice"]) in indigo.devices:
+							dev = indigo.devices[int(d["thermostatdevice"])]
+							
+							valuesDict["NumTemperatureInputs"] 			= dev.temperatureSensorCount
+							valuesDict["NumHumidityInputs"] 			= dev.humiditySensorCount
+							valuesDict["SupportsHeatSetpoint"] 			= dev.supportsHeatSetpoint
+							valuesDict["SupportsCoolSetpoint"] 			= dev.supportsCoolSetpoint
+							valuesDict["SupportsHvacOperationMode"] 	= dev.supportsHvacOperationMode
+							valuesDict["SupportsHvacFanMode"] 			= dev.supportsHvacFanMode
+							#valuesDict["ShowCoolHeatEquipmentStateUI"] = dev.humiditySensorCount
+					
+					# Temperature (allows for only 1 temperature input at the moment)
+					if d["key"] == "temp":
+						# Device
+						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
+							if int(d["option1Device"]) in indigo.devices:
+								dev = indigo.devices[int(d["option1Device"])]
+								if d["option1State"] in dev.states:
+									valuesDict["NumTemperatureInputs"]	= "1"
+					
+					# Humidity (only supports 1)		
+					if d["key"] == "humidity":
+						# Device
+						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
+							if int(d["option1Device"]) in indigo.devices:
+								dev = indigo.devices[int(d["option1Device"])]
+								if d["option1State"] in dev.states:
+									valuesDict["NumHumidityInputs"]	= "1"
+							
+							
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return (success, valuesDict, errorDict)
+			
+	#
 	# A plugin device was started
 	#
 	def onAfter_deviceStartComm (self, dev):	
 		try:
+			self.logger.threaddebug ("Running plugin onAfter_deviceStartComm")
+			
+			# Update the status of the devices
 			self.updateFromPluginDevice (dev)
+			
+			# If this is a thermostat or weather device then we have 24 hour high/low resets to cache, save them to the global variable so we can check on it
+			# This routine was taken out of concurrent threading as of 2.0.4 to save .2 to .4 CPU utilization at idle
+			if dev.deviceTypeId == "epsdeth" or dev.deviceTypeId == "epsdews":
+				if "lasthighlowreset" in dev.states: 
+					devDetail = {}
+					d = indigo.server.getTime()
+
+					devDetail["id"] = dev.id
+					devDetail["name"] = dev.name
+					devDetail["lastreset"] = ""
+
+					devDetail["lastreset"] = dev.states["lasthighlowreset"]				
+					if devDetail["lastreset"] == "":
+						self.resetHighsLows (dev)
+						devDetail["lastreset"] = d.strftime("%Y-%m-%d") # Because it's always at midnight, we only need to store the date, not the time
+						
+					self.resetDevices.append (devDetail)
 			
 		except Exception as e:
 			self.logger.error (ext.getException(e))		
@@ -320,6 +430,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def onAfter_formFieldChanged (self, valuesDict, typeId, devId):	
 		try:
+			if typeId == "thermostat-wrapper": return self.onAfter_formFieldChanged_Thermostat_Wrapper (valuesDict, typeId, devId)	
+			
 			if typeId == "epsdews":
 				if ext.valueValid (valuesDict, "device", True):
 					dev = indigo.devices[int(valuesDict["device"])]
@@ -346,6 +458,85 @@ class Plugin(indigo.PluginBase):
 						if "rainvalue" in valuesDict: valuesDict["rainvalue"] = "Rain"
 						
 			
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return valuesDict
+		
+	#
+	# A form field changed
+	#
+	def onAfter_formFieldChanged_Thermostat_Wrapper (self, valuesDict, typeId, devId):		
+		try:
+			if "deviceSettings" not in valuesDict:
+				valuesDict["deviceSettings"] = json.dumps([])
+			
+			deviceSettings = json.loads(valuesDict["deviceSettings"])
+			
+			# Find and update this setting in the JSON
+			settingFound = False
+			for d in deviceSettings:
+				if d["key"] == valuesDict["optionSelect"]:
+					settingFound = True
+				
+					if valuesDict["loadedoption"] != d["key"]: # Only load the stored JSON once
+						valuesDict["loadedoption"] = d["key"]
+				
+						valuesDict["option1Type"] = d["option1Type"]
+						valuesDict["option1Device"] = d["option1Device"]
+						valuesDict["option1State"] = d["option1State"]
+						valuesDict["option1Action"] = d["option1Action"]
+						valuesDict["option1Variable"] = d["option1Variable"]
+				
+						valuesDict["temperatureType"] = d["temperatureType"] # Temperature
+						valuesDict["thermostatdevice"] = d["thermostatdevice"] # Thermostat Wrap
+						
+					break # we found what we need, break out of the loop
+				
+			if not settingFound: 
+				d = {}
+			
+				# Reset all fields to defaults		
+				if valuesDict["loadedoption"] != "" and valuesDict["loadedoption"] != valuesDict["optionSelect"]:
+					valuesDict["option1Type"] = "device"
+					valuesDict["option1Device"] = ""
+					valuesDict["option1State"] = ""
+					valuesDict["option1Action"] = ""
+					valuesDict["option1Variable"] = ""
+		
+					# Device type specific fields
+					valuesDict["temperatureType"] = "F" # Temperature
+					valuesDict["thermostatdevice"] = "" # Thermostat wrap
+				
+					#indigo.server.log ("CLEARED!")
+		
+			valuesDict["loadedoption"] = valuesDict["optionSelect"]
+		
+			d["key"] 				= valuesDict["optionSelect"]
+			d["option1Type"] 		= valuesDict["option1Type"]
+			d["option1Device"] 		= valuesDict["option1Device"]
+			d["option1State"] 		= valuesDict["option1State"]
+			d["option1Action"] 		= valuesDict["option1Action"]
+			d["option1Variable"] 	= valuesDict["option1Variable"]
+
+			d["temperatureType"] = valuesDict["temperatureType"]
+			d["thermostatdevice"] = valuesDict["thermostatdevice"]
+			
+			# Sanity check so we don't add empty values to the JSON table
+			if d["option1Device"] == "" and d["option1Action"]  == "" and d["option1Variable"]  == "" and d["thermostatdevice"] == "":
+				return valuesDict
+	
+			# Save new JSON data
+			newDeviceSettings = []
+			for old in deviceSettings:
+				if old["key"] != d["key"]: newDeviceSettings.append (old)
+		
+			newDeviceSettings.append (d) # Write this data
+		
+			valuesDict["deviceSettings"] = json.dumps(newDeviceSettings)
+	
+			#indigo.server.log(unicode(valuesDict))		
+		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
 			
@@ -382,6 +573,8 @@ class Plugin(indigo.PluginBase):
 			self.logger.error (ext.getException(e))	
 			
 		return False	
+		
+
 	
 		
 	################################################################################
@@ -391,14 +584,57 @@ class Plugin(indigo.PluginBase):
 	################################################################################	
 	
 	################################################################################
+	# HOMEBRIDGE BUDDY INTEGRATION
+	################################################################################
+	
+	def hbbCheckForPlugin (self): return hbb.checkForPlugin ()
+	def hbbIntegrationFieldChange (self, valuesDict, typeId, devId): return hbb.integrationFieldChange (valuesDict, typeId, devId)
+	def hbbIntegrationServerList (self, filter="", valuesDict=None, typeId="", targetId=0): return hbb.integrationServerList (filter, valuesDict, typeId, targetId)
+	def hbbIntegrationTreatAsList (self, filter="", valuesDict=None, typeId="", targetId=0): return hbb.integrationTreatAsList (filter, valuesDict, typeId, targetId)
+	
+	################################################################################
 	# GENERAL
 	################################################################################
+	
+	#
+	# Thermostat wrapper clear button
+	#
+	def btnClearThermostatOption (self, valuesDict, typeId, devId):
+		try:
+			if "deviceSettings" not in valuesDict:
+				valuesDict["deviceSettings"] = json.dumps([])
+					
+			deviceSettings = json.loads(valuesDict["deviceSettings"])
+			
+			# Clear all fields	
+			valuesDict["option1Type"] = "device"
+			valuesDict["option1Device"] = ""
+			valuesDict["option1State"] = ""
+			valuesDict["option1Action"] = ""
+			valuesDict["option1Variable"] = ""
+			
+			valuesDict["temperatureType"] = "F" # Temperature
+			valuesDict["thermostatdevice"] = "" # Thermostat wrap
+		
+			# Write back all settings but this one
+			newDeviceSettings = []
+			for old in deviceSettings:
+				if old["key"] != valuesDict["optionSelect"]: newDeviceSettings.append (old)
+			
+			valuesDict["deviceSettings"] = json.dumps(newDeviceSettings)
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return valuesDict
 	
 	#
 	# Derive parent, child and value from a plugin device then update as if a watched state/attribute changed
 	#
 	def updateFromPluginDevice (self, dev):
 		try:
+			self.logger.threaddebug ("Running plugin updateFromPluginDevice")
+			
 			if dev.deviceTypeId == "epsdecon":
 				if dev.pluginProps["chdevice"] and ext.valueValid (dev.pluginProps, "device", True) and ext.valueValid (dev.pluginProps, "states", True):
 					if int(dev.pluginProps["device"]) not in indigo.devices:
@@ -426,6 +662,9 @@ class Plugin(indigo.PluginBase):
 				if ext.valueValid (dev.pluginProps, "device", True):
 					child = indigo.devices[int(dev.pluginProps["device"])]
 					self.updateDevice (dev, child, None)
+					
+				elif dev.deviceTypeId == "thermostat-wrapper": # Thermostat wrapper
+					self.updateDevice (dev, None, None)
 				
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
@@ -435,6 +674,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def updateDevice (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin updateDevice")
+			
 			if parent.deviceTypeId == "epsdecon":
 				if parent.pluginProps["action"] == "true" or parent.pluginProps["action"] == "false":
 					# These are static and have no device
@@ -471,6 +712,11 @@ class Plugin(indigo.PluginBase):
 				self.updateDeviceAddress (parent, indigo.devices[int(parent.pluginProps["device"])])
 				return self._updateIrrigation (parent, child, value)
 				
+			elif parent.deviceTypeId == "thermostat-wrapper": 
+				#self.updateDeviceAddress (parent, indigo.devices[int(parent.pluginProps["option1Device"])])
+				return self._updateThermostatWrapper (parent, child, value)
+				
+				
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
@@ -481,6 +727,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def updateDeviceAddress (self, parent, child):
 		try:
+			self.logger.threaddebug ("Running plugin updateDeviceAddress")
+			
 			if parent.address != child.name + " Extension":
 				props = parent.pluginProps
 				props["address"] = child.name + " Extension"
@@ -560,6 +808,8 @@ class Plugin(indigo.PluginBase):
 			
 			if parent.states["timerRunning"] == False: return # only is on for an active schedule, pause hard stop or quick pause
 			if ext.valueValid (parent.pluginProps, "device", True) == False: return
+			
+			self.logger.threaddebug ("Running plugin calculateTimeRemaining")
 						
 			child = indigo.devices[int(parent.pluginProps["device"])]
 			
@@ -605,6 +855,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def calculateUITime (self, dev, state):
 		try:
+			self.logger.threaddebug ("Running plugin calculateUITime")
+			
 			s = dtutil.dateDiff ("seconds", str(dev.states[state]), indigo.server.getTime())
 			
 			if s < 1:
@@ -638,6 +890,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _updateIrrigation (self, parent, child, value, states = None):
 		try:
+			self.logger.threaddebug ("Running plugin _updateIrrigation")
+			
 			if states is None: states = []
 			
 			if child.states["activeZone"] == 0 and child.pausedScheduleZone is None and parent.states["resuming"] == False:
@@ -683,6 +937,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def irrigationChildUpdated (self, parent, child, change):
 		try:
+			self.logger.threaddebug ("Running plugin irrigationChildUpdated")
+			
 			states = []
 			
 			##############################################################
@@ -836,6 +1092,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def irrigationAction (self, devAction):
 		try:
+			self.logger.threaddebug ("Running plugin irrigationAction")
+			
 			parent = indigo.devices[devAction.deviceId]
 			child = indigo.devices[int(parent.pluginProps["device"])]
 			
@@ -974,6 +1232,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def resetHighsLows (self, parent):
 		try:
+			self.logger.threaddebug ("Running plugin resetHighsLows")
+			
 			states = []
 			d = indigo.server.getTime()
 					
@@ -997,6 +1257,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _updateThermostat (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _updateThermostat")
+			
 			states = []
 			
 			states = iutil.updateState ("hightemp", calcs.getHighFloatValue (child, "temperatureInput1", parent.states["hightemp"]), states)
@@ -1042,6 +1304,8 @@ class Plugin(indigo.PluginBase):
 	#		
 	def _updateThermostatStates (self, parent, child, states):
 		try:		
+			self.logger.threaddebug ("Running plugin _updateThermostatStates")
+			
 			stateSuffix = u"°F" 
 			decimals = 1
 			stateFloat = float(0)
@@ -1150,6 +1414,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def toggleAllThermostatPresets (self, dev):
 		try:
+			self.logger.threaddebug ("Running plugin toggleAllThermostatPresets")
+			
 			if dev.states["presetOn1"]: self.thermostatPresetToggle (dev, 1)
 			if dev.states["presetOn2"]: self.thermostatPresetToggle (dev, 2)
 			if dev.states["presetOn3"]: self.thermostatPresetToggle (dev, 3)
@@ -1163,6 +1429,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def thermostatAction (self, devAction):
 		try:
+			self.logger.threaddebug ("Running plugin thermostatAction")
+			
 			parent = indigo.devices[devAction.deviceId]
 			child = indigo.devices[int(parent.pluginProps["device"])]
 		
@@ -1239,6 +1507,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def thermostatPresetToggle (self, parent, n):
 		try:
+			self.logger.threaddebug ("Running plugin thermostatPresetToggle")
+			
 			# If this preset is on then toggle it off
 			if parent.states["presetOn" + str(n)] == False:
 				self.thermostatPresetOn (parent, n)
@@ -1284,6 +1554,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def thermostatPresetOn (self, parent, n):
 		try:
+			self.logger.threaddebug ("Running plugin thermostatPresetOn")
+			
 			child = indigo.devices[int(parent.pluginProps["device"])]
 			prefix = "preset" + str(n)
 			states = []
@@ -1336,6 +1608,14 @@ class Plugin(indigo.PluginBase):
 				d = dtutil.dateAdd ("minutes", int(parent.pluginProps["timeout"]), d)
 				states = iutil.updateState ("presetTimeout", int(parent.pluginProps["timeout"]), states)
 				states = iutil.updateState ("presetExpires", d.strftime("%Y-%m-%d %H:%M:%S"), states)
+				
+				tinfo = {}
+				tinfo["id"] = parent.id
+				tinfo["name"] = parent.name
+				tinfo["preset"] = n
+				tinfo["expiration"] = d.strftime("%Y-%m-%d %H:%M:%S")				
+				self.thermostatPreset.append(tinfo)
+				
 				self.logger.info ("'{0}' will revert back to its pre-preset settings on {1}".format(child.name, d.strftime("%Y-%m-%d %H:%M:%S")))
 			else:
 				# Expire the timer in a month from now
@@ -1354,14 +1634,193 @@ class Plugin(indigo.PluginBase):
 			self.logger.error (ext.getException(e))	
 			
 	################################################################################
+	# THERMOSTAT WRAPPER
+	################################################################################				
+	
+	#
+	# Thermostat control action (thermostat wrapper)
+	#
+	def actionControlThermostat(self, action, dev):
+		try:
+			#indigo.server.log(unicode(action))
+			
+			deviceSettings = json.loads(dev.pluginProps["deviceSettings"])
+			thermostatDev = False
+			
+			# Check if we have a default device
+			for d in deviceSettings:
+				if d["key"] == "thermostat" and d["thermostatdevice"] != "":
+					if int(d["thermostatdevice"]) in indigo.devices:
+						thermostatDev = indigo.devices[int(d["thermostatdevice"])]
+						
+			# Increase heat setpoint by actionValue
+			if action.thermostatAction == indigo.kThermostatAction.IncreaseHeatSetpoint:
+				for d in deviceSettings:
+					if d["key"] == "heatincrease":
+						# Device
+						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
+							if int(d["option1Device"]) in indigo.devices:
+								X = 1
+								
+								return True
+								
+				if thermostatDev:
+					return indigo.thermostat.increaseHeatSetpoint(thermostatDev.id, delta=action.actionValue)
+					
+			# Decrease heat setpoint by actionValue
+			if action.thermostatAction == indigo.kThermostatAction.IncreaseHeatSetpoint:
+				for d in deviceSettings:
+					if d["key"] == "heatdecrease":
+						# Device
+						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
+							if int(d["option1Device"]) in indigo.devices:
+								X = 1
+								
+								return True
+								
+				if thermostatDev:
+					return indigo.thermostat.decreaseHeatSetpoint(thermostatDev.id, delta=action.actionValue)		
+					
+			# Increase cool setpoint by actionValue
+			if action.thermostatAction == indigo.kThermostatAction.IncreaseHeatSetpoint:
+				for d in deviceSettings:
+					if d["key"] == "coolincrease":
+						# Device
+						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
+							if int(d["option1Device"]) in indigo.devices:
+								X = 1
+								
+								return True
+								
+				if thermostatDev:
+					return indigo.thermostat.increaseCoolSetpoint(thermostatDev.id, delta=action.actionValue)	
+					
+			# Decrease cool setpoint by actionValue
+			if action.thermostatAction == indigo.kThermostatAction.IncreaseHeatSetpoint:
+				for d in deviceSettings:
+					if d["key"] == "cooldecrease":
+						# Device
+						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
+							if int(d["option1Device"]) in indigo.devices:
+								X = 1
+								
+								return True
+								
+				if thermostatDev:
+					return indigo.thermostat.decreaseCoolSetpoint(thermostatDev.id, delta=action.actionValue)				
+					
+					
+			# Set HVAC mode
+			if action.thermostatAction == indigo.kThermostatAction.SetHvacMode:
+				for d in deviceSettings:
+					if d["key"] == "cooldecrease":
+						# Device
+						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
+							if int(d["option1Device"]) in indigo.devices:
+								X = 1
+								
+								return True
+								
+				if thermostatDev:
+					if action.actionMode == 0: return indigo.thermostat.setHvacMode(thermostatDev.id, value=indigo.kHvacMode.Off)	
+					if action.actionMode == 1: return indigo.thermostat.setHvacMode(thermostatDev.id, value=indigo.kHvacMode.Heat)	
+					if action.actionMode == 2: return indigo.thermostat.setHvacMode(thermostatDev.id, value=indigo.kHvacMode.Cool)	
+					if action.actionMode == 3: return indigo.thermostat.setHvacMode(thermostatDev.id, value=indigo.kHvacMode.HeatCool)	
+					if action.actionMode == 4: return indigo.thermostat.setHvacMode(thermostatDev.id, value=indigo.kHvacMode.ProgramHeatCool)	
+					if action.actionMode == 5: return indigo.thermostat.setHvacMode(thermostatDev.id, value=indigo.kHvacMode.ProgramCool)	
+					if action.actionMode == 6: return indigo.thermostat.setHvacMode(thermostatDev.id, value=indigo.kHvacMode.ProgramHeat)	
+					
+			# Set fan mode
+			if action.thermostatAction == indigo.kThermostatAction.SetFanMode:
+				for d in deviceSettings:
+					if d["key"] == "cooldecrease":
+						# Device
+						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
+							if int(d["option1Device"]) in indigo.devices:
+								X = 1
+								
+								return True
+								
+				if thermostatDev:
+					if action.actionMode == 0: return indigo.thermostat.setFanMode(thermostatDev.id, value=indigo.kFanMode.Auto)	
+					if action.actionMode == 1: return indigo.thermostat.setFanMode(thermostatDev.id, value=indigo.kFanMode.AlwaysOn)
+			
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return False	
+		
+	
+	#
+	# Update a thermostat wrapper
+	#
+	def _updateThermostatWrapper (self, parent, child, value):
+		try:
+			self.logger.threaddebug ("Running plugin _updateThermostatWrapper")
+			
+			# We don't actually use child in this routine but have it there for continuity
+			if "deviceSettings" not in parent.pluginProps: return
+			deviceSettings = json.loads(parent.pluginProps["deviceSettings"])
+			
+			states = []
+			
+			# If we are wrapping a thermostat then start with all values from that and we'll change to another device below
+			for d in deviceSettings:
+				if d["key"] == "thermostat" and d["thermostatdevice"] != "":
+					if int(d["thermostatdevice"]) in indigo.devices:
+						thermostatDev = indigo.devices[int(d["thermostatdevice"])]
+						
+						statelist = ["hvacFanMode", "hvacOperationMode", "setpointCool", "setpointHeat", "temperatureInput1", "temperatureInputsAll", "humidityInput1", "humidityInputsAll"]
+
+						for s in statelist:
+							if s in thermostatDev.states and s in parent.states:		
+								states = iutil.updateState (s, thermostatDev.states[s], states)
+								
+					break
+			
+			for d in deviceSettings:
+				if d["key"] == "temp":
+					devOption1 = indigo.devices[int(d["option1Device"])]
+			
+					stateSuffix = u" °" + d["temperatureType"]
+					stateString = str(devOption1.states[d["option1State"]]) + stateSuffix
+						
+					states = iutil.updateState ("temperatureInput1", devOption1.states[d["option1State"]], states, stateString)
+					states = iutil.updateState ("temperatureInputsAll", devOption1.states[d["option1State"]], states, stateString)
+					states = iutil.updateState ("statedisplay", str(devOption1.states[d["option1State"]]) + stateSuffix , states)
+					
+				elif d["key"] == "humidity":
+					devOption1 = indigo.devices[int(d["option1Device"])]
+			
+					stateString = str(devOption1.states[d["option1State"]])
+						
+					states = iutil.updateState ("humidityInput1", devOption1.states[d["option1State"]], states, stateString)
+					states = iutil.updateState ("humidityInputsAll", devOption1.states[d["option1State"]], states, stateString)
+			
+			
+			parent.updateStateImageOnServer(eps.ui.getIndigoIconForKeyword(parent.pluginProps["icon"]))
+			
+			parent.updateStatesOnServer (states)
+			
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")		
+	
+			
+	################################################################################
 	# WEATHER EXTENSION
 	################################################################################			
+	
+
 	
 	#
 	# Update a weather device
 	#
 	def _updateWeather (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _updateWeather")
+			
 			tempVar = parent.pluginProps["temperature"]
 			humVar = parent.pluginProps["humidity"]
 			rainVar = parent.pluginProps["rain"]
@@ -1406,6 +1865,8 @@ class Plugin(indigo.PluginBase):
 	#		
 	def _updateWeatherStates (self, parent, child, states):
 		try:
+			self.logger.threaddebug ("Running plugin _updateWeatherStates")
+			
 			stateSuffix = u"°F" 
 			decimals = 1
 			stateFloat = float(0)
@@ -1477,6 +1938,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _celsiusToFahrenheit (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _celsiusToFahrenheit for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			
 			if "precision" in parent.pluginProps:
 				value = calcs.temperature (value, False, int(parent.pluginProps["precision"]))
 			else:
@@ -1502,6 +1965,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _fahrenheitToCelsius (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _fahrenheitToCelsius for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			
 			if "precision" in parent.pluginProps:
 				value = calcs.temperature (value, True, int(parent.pluginProps["precision"]))
 			else:
@@ -1527,6 +1992,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _dateReformat (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _dateReformat for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			
 			if ext.valueValid (parent.pluginProps, "inputdtformat", True) and ext.valueValid (parent.pluginProps, "outputdtformat", True):
 				value = unicode(value)
 				value = dtutil.dateStringFormat (value, parent.pluginProps["inputdtformat"], parent.pluginProps["outputdtformat"])
@@ -1548,6 +2015,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _datetimeToElapsedMinutes (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _datetimeToElapsedMinutes for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			
 			value = unicode(value)
 			if value == "": return
 		
@@ -1580,6 +2049,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _convertToString (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _convertToString for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			
 			value = unicode(value)
 			
 			if ext.valueValid (parent.pluginProps, "maxlength", True):
@@ -1619,6 +2090,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _booleanToString (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _booleanToString for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			
 			value = unicode(value).lower()
 			
 			truevalue = unicode(parent.pluginProps["truewhen"])
@@ -1644,6 +2117,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _luxToString (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _luxToString for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			
 			if value is None:
 				self.logger.warn ("'{0}' cannot convert the lux value for '{1}' because the value is None".format(parent.name, child.name))
 				parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
@@ -1689,6 +2164,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _stringToCase (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _stringToCase for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			
 			value = unicode(value)
 			
 			if parent.pluginProps["strcase"] == "title": value = value.title()
@@ -1713,6 +2190,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _stringToNumber (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _stringToNumber for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			
 			value = unicode(value)
 			states = []
 			
@@ -1767,6 +2246,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _booleanStatic (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _booleanStatic for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			
 			if value:
 				parent.updateStateImageOnServer(indigo.kStateImageSel.PowerOn)
 			else:
@@ -1788,6 +2269,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _stateToBoolean (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _stateToBoolean for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			
 			value = unicode(value).lower()
 			
 			truevalue = unicode(parent.pluginProps["truewhen"]).lower()
@@ -1828,6 +2311,8 @@ class Plugin(indigo.PluginBase):
 	#
 	def _booleanToType (self, parent, child, value):
 		try:
+			self.logger.threaddebug ("Running plugin _booleanToType for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			
 			value = unicode(value).lower()
 			
 			statevalue = "na"
@@ -2018,7 +2503,14 @@ class Plugin(indigo.PluginBase):
 	def formFieldChanged (self, valuesDict, typeId, devId): return eps.plug.formFieldChanged (valuesDict, typeId, devId)
 	
 	
-	
+	################################################################################
+	# ADVANCED PLUGIN ACTIONS (v3.3.0)
+	################################################################################
+
+	# Plugin menu advanced plugin actions 
+	def advPluginDeviceSelected (self, valuesDict, typeId): return eps.plug.advPluginDeviceSelected (valuesDict, typeId)
+	def btnAdvDeviceAction (self, valuesDict, typeId): return eps.plug.btnAdvDeviceAction (valuesDict, typeId)
+	def btnAdvPluginAction (self, valuesDict, typeId): return eps.plug.btnAdvPluginAction (valuesDict, typeId)
 	
 	
 	

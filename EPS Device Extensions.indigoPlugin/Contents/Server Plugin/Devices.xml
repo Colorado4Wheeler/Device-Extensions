@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 
 <Devices>
+	<!-- =========== WEATHER EXTENSION =========== -->
 	<Device type="custom" id="epsdews">
 		<Name>Weather Extension</Name>
 		<ConfigUI>
@@ -154,6 +155,191 @@ Is raining (yes/no)
 		<UiDisplayStateId>statedisplay</UiDisplayStateId>
 	</Device>
 	
+	<!-- =========== THERMOSTAT WRAPPER =========== -->
+	<Device type="thermostat" id="thermostat-wrapper">
+		<Name>Thermostat Wrapper</Name>
+		<ConfigUI>
+			<!-- Start Homebridge Buddy Integration Block -->		
+			<Field type="checkbox" id="hbbIntegrated" defaultValue="false" hidden="true">
+				<Label>Enable for HomeKit</Label>
+				<Description>Integrate this device into Homebridge Buddy</Description>
+				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
+			</Field>
+		
+			<Field type="menu" id="hbbServer" defaultValue="default" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+				<Label>Homebridge server:</Label>
+				<List class="self" filter="" method="hbbIntegrationServerList" dynamicReload="true"/>
+				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="hbbTreatAs" defaultValue="default" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+				<Label>Homebridge device type:</Label>
+				<List class="self" filter="" method="hbbIntegrationTreatAsList" dynamicReload="true"/>
+				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<Field type="separator" id="sep_hbbConnector" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"/>
+			<!-- End Homebridge Buddy Integration Block -->
+			
+			<!-- Stock thermostat fields that Indigo will look for -->
+			<Field type="menu" id="NumTemperatureInputs" defaultValue="1" hidden="true">
+				<Label>Number of temperature sensors:</Label>
+				<List>
+					<Option value="0">None</Option>
+					<Option value="1">1</Option>
+					<Option value="2">2</Option>
+					<Option value="3">3</Option>
+				</List>
+			</Field>
+			<Field type="menu" id="NumHumidityInputs" defaultValue="0" hidden="true">
+				<Label>Number of humidity sensors:</Label>
+				<List>
+					<Option value="0">None</Option>
+					<Option value="1">1</Option>
+					<Option value="2">2</Option>
+					<Option value="3">3</Option>
+				</List>
+			</Field>
+			<Field type="checkbox" id="SupportsHeatSetpoint" defaultValue="false" hidden="true">
+				<Label>Supports heat setpoint:</Label>
+				<Description>Show heat setpoint controls in UI</Description>
+			</Field>
+			<Field type="checkbox" id="SupportsCoolSetpoint" defaultValue="false" hidden="true">
+				<Label>Supports cool setpoint:</Label>
+				<Description>Show cool setpoint controls in UI</Description>
+			</Field>
+			<Field type="checkbox" id="SupportsHvacOperationMode" defaultValue="false" hidden="true">
+				<Label>Supports thermostat modes:</Label>
+				<Description>Show thermostat mode controls (heat/cool/auto) in UI</Description>
+			</Field>
+			<Field type="checkbox" id="SupportsHvacFanMode" defaultValue="false" hidden="true">
+				<Label>Supports fan modes:</Label>
+				<Description>Show fan mode controls (auto/always on) in UI</Description>
+			</Field>
+			<Field type="checkbox" id="ShowCoolHeatEquipmentStateUI" hidden="true">
+				<Label>Supports compressor/furnace feedback:</Label>
+				<Description>Show compressor/furnace states in UI</Description>
+			</Field>
+			
+			<!-- End of stock fields -->
+			
+			<!-- Hidden field indicating which option values are being displayed so we can clear them as needed in code -->
+			<Field id="loadedoption" type="textfield" defaultValue="" hidden="true">
+				<Label>Displaying values for:</Label>
+			</Field>
+			
+			<Field type="menu" id="optionSelect" defaultValue="temp" alwaysUseInDialogHeightCalc="true">
+				<Label>Select configuration option:</Label>
+				<List>
+					<Option value="thermostat">Wrap a Thermostat</Option>
+					<Option value="temp">Temperature Value</Option>
+					<Option value="humidity">Humidity Value</Option>
+				</List>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="temperatureType" defaultValue="F" visibleBindingId="optionSelect" visibleBindingValue="temp" alwaysUseInDialogHeightCalc="true">
+				<Label>Display temperature as:</Label>
+				<List>
+					<Option value="F">Fahrenheit</Option>
+					<Option value="C">Celsius</Option>
+				</List>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="label" id="lbl_thermostat_device" visibleBindingId="optionSelect" visibleBindingValue="thermostat" alwaysUseInDialogHeightCalc="true">
+				<Label>
+			   Selecting another thermostat here indicates that you want
+			   all features and functions of this device to mirror that one
+			   unless specifically indicated otherwise.
+		</Label>
+			</Field>
+			
+			<Field type="menu" id="thermostatdevice" defaultValue="device" visibleBindingId="optionSelect" visibleBindingValue="thermostat" >
+				<Label>Thermostat:</Label>
+				<List class="indigo.devices" filter="indigo.thermostat"/>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="option1Type" defaultValue="device" visibleBindingId="optionSelect" visibleBindingValue="temp,humidity" alwaysUseInDialogHeightCalc="true">
+				<Label>Object:</Label>
+				<List>
+					<Option value="device">Device</Option>
+				</List>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="label" id="lbl_temperature_device" visibleBindingId="option1Type" visibleBindingValue="device" >
+				<Label>
+				   Select the device property that will be shown as the 
+				   value.  This property must always have a number value.
+		</Label>
+			</Field>
+			
+			<Field type="menu" id="option1Device" visibleBindingId="option1Type" visibleBindingValue="device" alwaysUseInDialogHeightCalc="true">
+				<Label>Device:</Label>
+				<List class="indigo.devices" />
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="option1State" defaultValue="on" visibleBindingId="option1Type" visibleBindingValue="device" alwaysUseInDialogHeightCalc="true">
+				<Label>State:</Label>
+				<List class="self" filter="#devicestates#[index=option1State, srcfield=option1Device, allowui=True]" method="getCustomList" dynamicReload="true"/>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="option1Action" visibleBindingId="option1Type" visibleBindingValue="action">
+				<Label>Action group:</Label>
+				<List class="indigo.actionGroups" />
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="option1Variable" visibleBindingId="option1Type" visibleBindingValue="variable">
+				<Label>Variable:</Label>
+				<List class="indigo.variables" />
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="label" id="lbl_button_whitespace" >
+				<Label>
+				   
+		</Label>
+			</Field>
+			
+			<Field type="button" id="clear"  >
+				<Label> 
+				</Label>
+				<Title>Clear Option Settings </Title>
+				<CallbackMethod>btnClearThermostatOption</CallbackMethod>
+			</Field>
+			
+			<Field type="separator" id="sep_devicedef" />
+			
+			<Field type="menu" id="icon" defaultValue="Auto" >
+				<Label>Icon when idle:</Label>
+				<List class="self" filter="#stateicons#[index=icon, excludeself=true]" method="getCustomList" dynamicReload="true"/>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			
+			
+		</ConfigUI>
+		
+		<States>
+			<State id="statedisplay">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Current device state</TriggerLabel>
+				<ControlPageLabel>Current device state</ControlPageLabel>
+			</State>
+			
+			<State id="sep1">
+				<ValueType>Separator</ValueType>
+			</State>
+		</States>
+		<UiDisplayStateId>statedisplay</UiDisplayStateId>
+	</Device>	
+	
+	<!-- =========== THERMOSTAT EXTENSION =========== -->
 	<Device type="custom" id="epsdeth">
 		<Name>Thermostat Extension</Name>
 		<ConfigUI>
@@ -512,6 +698,7 @@ Reset preset auto timeout
 		<UiDisplayStateId>statedisplay</UiDisplayStateId>
 	</Device>	
 	
+	<!-- =========== IRRIGATION EXTENSION =========== -->
 	<Device type="custom" id="epsdeirr">
 		<Name>Irrigation Extension</Name>
 		<ConfigUI>
@@ -785,6 +972,7 @@ Schedule is paused (true/false)
 		<UiDisplayStateId>statedisplay</UiDisplayStateId>
 	</Device>
 	
+	<!-- =========== CONVERSION EXTENSION =========== -->
 	<Device type="custom" id="epsdecon">
 		<Name>Conversion Extension</Name>
 		<ConfigUI>
