@@ -1,7 +1,12 @@
 Release Notes
 ==========
 
-Version 2.0.4 (Interim Release)
+Version 2.0.5
+---------------
+
+* 
+
+Version 2.0.4 (Development Release)
 ---------------
 
 * Added new Thermostat Wrapper device to allow you to either wrap an existing thermostat and re-assign select fields and functions or to create a thermostat from device states, variables and action groups (created as an option to use with voice control such as Homebridge Buddy)
