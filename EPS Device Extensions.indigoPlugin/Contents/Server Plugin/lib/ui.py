@@ -188,6 +188,7 @@ class ui:
 			self._cacheResults (results, index, targetId, args, valuesDict)
 		
 			#self.logger.threaddebug ("List END: " + unicode(indigo.server.getTime()))
+			#indigo.server.log(unicode(results))
 			return results
 		
 		except Exception as e:
@@ -446,11 +447,22 @@ class ui:
 			retList = []
 			
 			state = ""
+			proptrue = ""
+			propfalse = ""
 			excludeSelf = False
+			
 						
 			# Only if it has a certain state
 			if ext.valueValid (args, "onlywith", True): 
 				state = args["onlywith"]
+				
+			# Only if a specific property is True
+			if ext.valueValid (args, "proptrue", True): 
+				proptrue = args["proptrue"]
+				
+			# Only if a specific property is False
+			if ext.valueValid (args, "propfalse", True): 
+				propfalse = args["propfalse"]	
 				
 			# Exclude plugin devices
 			if ext.valueValid (args, "excludeself", True): 
@@ -465,13 +477,41 @@ class ui:
 					isValid = False
 								
 					if ext.valueValid (dev.states, state):
-						isValide = True
+						isValid = True
 						
 				# Check for self filter
 				if excludeSelf and dev.pluginId == self.factory.plugin.pluginId: isValid = False
 				
+				# Check for true attribute
+				if proptrue != "":
+					isValid = False
+					
+					try:
+						prop = getattr(dev, proptrue)
+						
+						if prop: 
+							isValid = True
+							
+					except AttributeError:
+						pass
+						
+				# Check for false attribute
+				if propfalse != "":
+					isValid = False
+					
+					try:
+						prop = getattr(dev, propfalse)
+						
+						if not prop: 
+							isValid = True
+							
+					except AttributeError:
+						pass		
+					
 				if isValid:
 					retList.append ((str(dev.id), dev.name))	
+					
+			source = None # Memory reset
 		
 			if len(retList) > 0: return retList
 	

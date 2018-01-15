@@ -1,7 +1,7 @@
 Release Notes
 ==========
 
-Version 2.0.5 (2.1.0 preview)
+Version 2.0.5
 ---------------
 
 * Added new device Virtual Color/Ambiant Hue Device Group that allows you to group together Hue bulbs so you can control them in tandem, including changing colors
@@ -12,7 +12,7 @@ Version 2.0.5 (2.1.0 preview)
 * Changed the About URL in the plugin menu to point to the Git Wiki pages instead of the Indigo forums
 * Removed Support Data Dump, Comprehensive Data Dump and Check for Updates from the plugin menu and added the Advanced Plugin Actions in its place to clean up the menu and to remove the version checker made obsolete by the Plugin Store
 
-Version 2.0.4 (Interim Release)
+Version 2.0.4
 ---------------
 
 * Added new Thermostat Wrapper device to allow you to either wrap an existing thermostat and re-assign select fields and functions or to create a thermostat from device states, variables and action groups (created as an option to use with voice control such as Homebridge Buddy)

@@ -225,6 +225,14 @@ class Plugin(indigo.PluginBase):
 							if ext.valueValid (child.states, s): states.append (s)
 						
 						ret[int(d["thermostatdevice"])] = states
+						
+			if dev.deviceTypeId == "hue-color-group":
+				if "huelights" in dev.pluginProps:
+					for d in dev.pluginProps["huelights"]:
+						states = ["whiteLevel", "greenLevel", "redLevel", "blueLevel", "whiteTemperature", "onOffState", "brightnessLevel"]	
+						
+						ret[int(d)] = states
+						
 										
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
@@ -342,6 +350,10 @@ class Plugin(indigo.PluginBase):
 			success = True
 			
 			if typeId == "thermostat-wrapper":
+				(hbbValuesDict, hbbErrorsDict) = hbb.validateDeviceConfigUi (valuesDict, typeId, devId)
+				if len(hbbErrorsDict) > 0:
+					return (False, hbbValuesDict, hbbErrorsDict)
+				
 				if "deviceSettings" not in valuesDict:
 					valuesDict["deviceSettings"] = json.dumps([])
 			
@@ -431,6 +443,7 @@ class Plugin(indigo.PluginBase):
 	def onAfter_formFieldChanged (self, valuesDict, typeId, devId):	
 		try:
 			if typeId == "thermostat-wrapper": return self.onAfter_formFieldChanged_Thermostat_Wrapper (valuesDict, typeId, devId)	
+			if typeId == "hue-color-group": return self.onAfter_formFieldChanged_Hue_Color_Group (valuesDict, typeId, devId)	
 			
 			if typeId == "epsdews":
 				if ext.valueValid (valuesDict, "device", True):
@@ -462,6 +475,18 @@ class Plugin(indigo.PluginBase):
 			self.logger.error (ext.getException(e))	
 			
 		return valuesDict
+		
+	#
+	# A form field changed
+	#
+	def onAfter_formFieldChanged_Hue_Color_Group (self, valuesDict, typeId, devId):
+		try:
+			if valuesDict["keepsync"] == "": valuesDict["keepsync"] = "none"
+			
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return valuesDict	
 		
 	#
 	# A form field changed
@@ -547,11 +572,19 @@ class Plugin(indigo.PluginBase):
 	#
 	def onDeviceCommandTurnOn (self, dev):
 		try:
-			if dev.pluginProps["onCommand"] != "":
+			if "onCommand" in dev.pluginProps and dev.pluginProps["onCommand"] != "":
 				if self.urlDeviceAction (dev, dev.pluginProps["onCommand"]) == False: 
 					return False			
 				else:
 					return True
+					
+			if dev.deviceTypeId == "hue-color-group":
+				for d in dev.pluginProps["huelights"]:
+					if int(d) in indigo.devices:
+						hue = indigo.devices[int(d)]
+						indigo.dimmer.turnOn (int(d))
+						
+				return True
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
@@ -563,16 +596,117 @@ class Plugin(indigo.PluginBase):
 	#
 	def onDeviceCommandTurnOff (self, dev):
 		try:
-			if dev.pluginProps["offCommand"] != "":
+			if "offCommand" in dev.pluginProps and dev.pluginProps["offCommand"] != "":
 				if self.urlDeviceAction (dev, dev.pluginProps["onCommand"]) == False: 
 					return False			
 				else:
 					return True
+					
+			if dev.deviceTypeId == "hue-color-group":
+				for d in dev.pluginProps["huelights"]:
+					if int(d) in indigo.devices:
+						hue = indigo.devices[int(d)]
+						
+						# See if they have an OFF setting
+						if "beforeoff" in dev.pluginProps and dev.pluginProps["beforeoff"]:
+							value = 0
+							
+							if dev.pluginProps["resettemp"] != "":
+								value = int(dev.pluginProps["resettemp"])
+							else:
+								value = 0
+								
+							indigo.dimmer.setColorLevels (int(d), whiteTemperature=value)	
+							
+							if dev.pluginProps["resetwhite"] != "":
+								value = int(dev.pluginProps["resetwhite"])
+							else:
+								value = 0
+								
+							indigo.dimmer.setColorLevels (int(d), whiteLevel=value)	
+							
+							valred = 0
+							valgreen = 0
+							valblue = 0
+							
+							if dev.pluginProps["resetred"] != "":
+								valred = int(dev.pluginProps["resetred"])
+							else:
+								valred = 0
+								
+							if dev.pluginProps["resetgreen"] != "":
+								valgreen = int(dev.pluginProps["resetgreen"])
+							else:
+								valgreen = 0	
+								
+							if dev.pluginProps["resetblue"] != "":
+								valblue = int(dev.pluginProps["resetblue"])
+							else:
+								valblue = 0		
+							
+							indigo.dimmer.setColorLevels (int(d), redLevel=valred, greenLevel=valgreen, blueLevel=valblue)
+							
+							if dev.pluginProps["resetbrightness"] != "":
+								value = int(dev.pluginProps["resetbrightness"])
+							else:
+								value = 0
+								
+							indigo.dimmer.setBrightness (int(d), value=value)	
+										
+						
+						indigo.dimmer.turnOff (int(d))	
+						
+				return True	
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
 			
 		return False	
+		
+	#
+	# Set brightness
+	#
+	def onDeviceCommandSetBrightness (self, dev, amount):
+		try:
+			if dev.deviceTypeId == "hue-color-group":
+				for d in dev.pluginProps["huelights"]:
+					if int(d) in indigo.devices:
+						hue = indigo.devices[int(d)]
+						indigo.dimmer.setBrightness (int(d), value=amount)	
+						
+				return True	
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return False	
+		
+	#
+	# Set color
+	#
+	def onDeviceCommandSetColor (self, dev, amount):
+		try:
+			if dev.deviceTypeId == "hue-color-group":
+				for d in dev.pluginProps["huelights"]:
+					if int(d) in indigo.devices:
+						hue = indigo.devices[int(d)]
+						indigo.server.log(unicode(amount))
+						
+						if 'redLevel' in amount and 'greenLevel' in amount and 'blueLevel' in amount:
+							indigo.dimmer.setColorLevels (int(d), redLevel=amount['redLevel'], greenLevel=amount['greenLevel'], blueLevel=amount['blueLevel'])
+						elif 'whiteLevel' in amount:
+							indigo.dimmer.setColorLevels (int(d), whiteLevel=amount['whiteLevel'])	
+						elif 'whiteLevel2' in amount:
+							indigo.dimmer.setColorLevels (int(d), whiteLevel2=amount["whiteLevel2"])	
+						elif 'whiteTemperature' in amount:
+							indigo.dimmer.setColorLevels (int(d), whiteTemperature=amount["whiteTemperature"])	
+						
+				return True	
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return False		
 		
 
 	
@@ -665,6 +799,9 @@ class Plugin(indigo.PluginBase):
 					
 				elif dev.deviceTypeId == "thermostat-wrapper": # Thermostat wrapper
 					self.updateDevice (dev, None, None)
+					
+				elif dev.deviceTypeId == "hue-color-group": # Thermostat wrapper
+					self.updateDevice (dev, None, None)
 				
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
@@ -716,6 +853,9 @@ class Plugin(indigo.PluginBase):
 				#self.updateDeviceAddress (parent, indigo.devices[int(parent.pluginProps["option1Device"])])
 				return self._updateThermostatWrapper (parent, child, value)
 				
+			elif parent.deviceTypeId == "hue-color-group": 
+				#self.updateDeviceAddress (parent, indigo.devices[int(parent.pluginProps["option1Device"])])
+				return self._updateVirtualColorHueGroup (parent, child, value)	
 				
 		
 		except Exception as e:
@@ -782,6 +922,72 @@ class Plugin(indigo.PluginBase):
 			self.logger.error (ext.getException(e))	
 			return False
 			
+	#
+	# Speak to Airfoil speaker
+	#
+	def extendedSpeak (self, devAction):
+		try:
+			say = devAction.props["say"]
+			if say == "": 
+				self.logger.error ("An action was raised to speak but nothing was entered to say")
+				return
+			
+			# Check for up to 10 keywords
+			for i in range (0, 10):
+				keywords = dict([nvstring.split(":") for nvstring in [line for line in say.split("%%") if ":" in line]])
+				
+				if "v" in keywords:
+					if int(keywords["v"]) in indigo.variables:
+						say = say.replace ("%%v:" + keywords["v"] + "%%", unicode(indigo.variables[int(keywords["v"])].value) )
+					else:
+						self.logger.error ("Unable to find variable {0} to inject into speech action, ignoring".format(keywords["v"]))
+						say = say.replace ("%%v:" + keywords["v"] + "%%", "")
+					
+				# Device state
+				if "ds" in keywords:
+					devstate = keywords["ds"]
+					devstate = devstate.split("|")
+					
+					if int(devstate[0]) in indigo.devices:
+						dev = indigo.devices[int(devstate[0])]
+						if devstate[1] in dev.states:
+							say = say.replace ("%%ds:" + devstate[0] + "|" + devstate[1] + "%%", unicode(dev.states[devstate[1]]) )
+						else:
+							self.logger.error ("Unable to find state '{0}' in device '{1}' states to inject into speech action, ignoring".format(devstate[1], dev.name))
+							
+					else:
+						self.logger.error ("Unable to find device {0} to inject into speech action, ignoring".format(devstate[0]))
+
+			self.logger.info ("Extended speech is saying: {0}".format(say))
+
+			if devAction.props["useAirfoil"]:			
+				airfoilPlugin = indigo.server.getPlugin("com.perceptiveautomation.indigoplugin.airfoilpro")
+			
+				SPEAKERID = int(devAction.props["speaker"])
+
+				if airfoilPlugin.isEnabled():
+					result = airfoilPlugin.executeAction("connect", deviceId=SPEAKERID, waitUntilDone=True)
+					if devAction.props["delay"] !="": time.sleep(int(devAction.props["delay"]))
+				
+					say = devAction.props["say"]
+					indigo.server.speak(say, waitUntilDone=True)
+
+					if devAction.props["disconnect"] !="": time.sleep(int(devAction.props["disconnect"]))
+					result = airfoilPlugin.executeAction("disconnect", deviceId= SPEAKERID, waitUntilDone=True)
+					
+				else: 
+					self.logger.error ("Extended speech action wants to use Airfoil but Airfoil Pro isn't enabled, aborting.")
+					return
+					
+			else:
+				if devAction.props["delay"] !="": time.sleep(int(devAction.props["delay"]))
+				say = devAction.props["say"]
+				indigo.server.speak(say, waitUntilDone=True)
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))
+			return False
+	
 	#
 	# URL actions
 	#
@@ -1806,6 +2012,113 @@ class Plugin(indigo.PluginBase):
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
 			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")		
+			
+	################################################################################
+	# VIRTUAL COLOR HUE GROUP
+	################################################################################	
+	
+	#
+	# Options for Hue group to synchronize
+	#
+	def listHueSyncTo (self, args, valuesDict):
+		try:
+			ret = [("default", "No data")]
+						
+			retList = [("none", "Keep individual settings")]
+			
+			retList = eps.ui.addLine (retList)
+			
+			for d in valuesDict["huelights"]:
+				dev = indigo.devices[int(d)]
+				retList.append ((d, dev.name))
+				
+			return retList
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return ret
+			
+	
+	#
+	# Dimmer controls
+	#
+	def xxxonAfter_actionControlDimmerRelay(self, action, dev):
+		try:
+			command = action.deviceAction
+			
+			if command == indigo.kDeviceAction.TurnOn:
+				for d in dev.pluginProps["huelights"]:
+					if int(d) in indigo.devices:
+						hue = indigo.devices[int(d)]
+						indigo.dimmer.turnOn (int(d))
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+	
+			
+	#
+	# Update a thermostat wrapper
+	#
+	def _updateVirtualColorHueGroup (self, parent, child, value):
+		try:
+			states = []
+			bulbs = []
+			allOn = True
+			anyOn = False
+			master = 0
+			
+			if parent.pluginProps["keepsync"] != "none" and parent.pluginProps["keepsync"] != "": master = int(parent.pluginProps["keepsync"])
+			
+			for d in parent.pluginProps["huelights"]:
+				if int(d) in indigo.devices:
+					bulb = indigo.devices[int(d)]
+					if not bulb.states["onOffState"]: allOn = False
+					if bulb.states["onOffState"]: anyOn = True
+					bulbs.append(bulb)
+					
+			for b in bulbs:
+				# If there is a master bulb then we ignore all others, otherwise we just take whatever
+				if master != 0 and b.id != master:
+					continue
+					
+				for state in b.states:
+					if state in parent.states:
+						states = iutil.updateState (state, b.states[state], states)
+						
+			parent.updateStatesOnServer (states)
+			
+			# If we are synchronizing then do that now
+			if master !=0:
+				bulb = indigo.devices[master]
+				
+				for b in bulbs:
+					if b.id != bulb.id:
+						if b.onState != bulb.onState:
+							if bulb.onState:
+								indigo.dimmer.turnOn (b.id)
+							else:
+								indigo.dimmer.turnOff (b.id)
+								
+						if b.brightness != bulb.brightness:
+							indigo.dimmer.setBrightness (b.id, value=bulb.brightness)	
+							
+						if b.whiteLevel != bulb.whiteLevel:
+							indigo.dimmer.setColorLevels (b.id, whiteLevel=bulb.whiteLevel)
+						
+						if b.whiteLevel2 != bulb.whiteLevel2:
+							indigo.dimmer.setColorLevels (b.id, whiteLevel2=bulb.whiteLevel2)
+						
+						if b.whiteTemperature != bulb.whiteTemperature:
+							indigo.dimmer.setColorLevels (b.id, whiteTemperature=bulb.whiteTemperature)
+						
+						if b.redLevel != bulb.redLevel or b.greenLevel != bulb.greenLevel or b.blueLevel != bulb.blueLevel:
+							indigo.dimmer.setColorLevels (b.id, redLevel=bulb.redLevel, greenLevel=bulb.greenLevel, blueLevel=bulb.blueLevel)
+						
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")	
 	
 			
 	################################################################################

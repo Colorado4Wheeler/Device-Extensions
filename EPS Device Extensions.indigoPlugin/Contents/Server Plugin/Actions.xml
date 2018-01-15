@@ -136,5 +136,63 @@ Each successive execution of quick pause will add the time to the pause time (i.
 		<Name>URL - Force to off</Name>
 		<CallbackMethod>urlActions</CallbackMethod>
 	</Action>
+	
+	<Action id="sep_airfoil" uiPath="DeviceActions"/>
+	
+	<Action id="extendedSpeak" deviceFilter="" uiPath="DeviceActions">
+		<Name>Extended Text To Speech</Name>
+		<CallbackMethod>extendedSpeak</CallbackMethod>
+		<ConfigUI>
+			<Field type="checkbox" id="useAirfoil" defaultValue="false" >
+				<Label> </Label>
+				<Description>Use Airfoil speaker</Description>
+			</Field>
+			
+			<Field type="menu" id="speaker" defaultValue="1" visibleBindingId="useAirfoil" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+				<Label>Airfoil Speaker:</Label>
+				<List class="indigo.devices" filter="com.perceptiveautomation.indigoplugin.airfoilpro" />
+			</Field>
+			
+			<Field type="separator" id="sep_airfoil" />
+			
+			<Field id="say" type="textfield" defaultValue="">
+				<Label>What to say:</Label>
+			</Field>
+			
+			<Field type="label" id="label_airfoil">
+				<Label>
+						  To add a variable value use the keyword
+						  %%v:ID%% where ID is the variable ID to
+						  inject.
+						  
+						  To add a device state value use keyword
+						  %%ds:ID|STATE%% where ID is the device
+						  ID, plus a pipe symbol and then the name
+						  of a valid device state to inject.
+				</Label>
+			</Field>
+			
+			<Field type="separator" id="sep_delaylabel" />
+			
+			<Field id="delay" type="textfield" defaultValue="3">
+				<Label>Delay before speaking:</Label>
+			</Field>
+			
+			<Field id="disconnect" type="textfield" defaultValue="5" visibleBindingId="useAirfoil" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+				<Label>Delay before disconnecting:</Label>
+			</Field>
+			
+			<Field id="label" type="label">
+				<Label>   
+						  If your spoken text is starting a little
+						  late, or if you are using Airfoil and it
+						  gets cut off mid-phrase, try adjusting
+						  the delays until it sounds correct
+				</Label>
+			</Field>
+			
+		</ConfigUI>
+
+	</Action>
 		
 </Actions>

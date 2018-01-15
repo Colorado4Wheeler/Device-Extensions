@@ -378,6 +378,18 @@ class plug:
 				elif len(origDev.pluginProps) == 0 and len(newDev.pluginProps) > 0:
 					self.pluginDeviceCreated (newDev)
 					
+			else:
+				# In case our plugin wants to know about other devices that aren't our own for
+				# API calls or whatever
+				if len(origDev.ownerProps) > 0: 
+					self.nonpluginDeviceUpdated (origDev, newDev)
+					
+				elif len(origDev.ownerProps) == 0 and len(newDev.ownerProps) == 0 and newDev.deviceTypeId != "":
+					self.nonpluginDeviceBegun (newDev)
+					
+				elif len(origDev.ownerProps) == 0 and len(newDev.ownerProps) > 0:
+					self.nonpluginDeviceCreated (newDev)
+					
 			
 			# See if we are watching this
 			if "cache" in dir(self.factory):
@@ -393,9 +405,45 @@ class plug:
 						
 						if "devices" in dir(self.factory) and newDev.id in self.factory.devices.items:
 							self.factory.devices.deviceUpdated (origDev, newDev, change)
+			
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+	# New non plugin device entering configuration
+	def nonpluginDeviceBegun (self, dev):
+		try:
+			self.logger.threaddebug ("Non plugin device '{0}' being created and configured".format(dev.name))
+			
+			self._callBack (BEFORE, [dev])	
+			
+			self._callBack (AFTER, [dev])
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
+				
+	# Non plugin device created (Custom)
+	def nonpluginDeviceCreated (self, dev):
+		try:
+			self.logger.threaddebug ("Non plugin device '{0}' created".format(dev.name))
+			
+			self._callBack (BEFORE, [dev])	
+			
+			self._callBack (AFTER, [dev])
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+				
+	# Non plugin device updated (Custom)
+	def nonpluginDeviceUpdated (self, origDev, newDev):
+		try:
+			self.logger.threaddebug ("Non plugin device '{0}' has been updated".format(newDev.name))
+
+			self._callBack (BEFORE, [origDev, newDev])	
+			
+			self._callBack (AFTER, [origDev, newDev])
+				
+		except Exception as e:
+			self.logger.error (ext.getException(e))				
 	
 	# New plugin device entering configuration
 	def pluginDeviceBegun (self, dev):
@@ -531,11 +579,25 @@ class plug:
 				
 			if dev.pluginId == self.factory.plugin.pluginId:
 				self.pluginDeviceDeleted (dev)
+			else:
+				self.nonpluginDeviceDeleted (dev)
 			
 			self._callBack (AFTER, [dev])
 		
 		except Exception as e:
-			self.logger.error (ext.getException(e))		
+			self.logger.error (ext.getException(e))	
+			
+	# Non plugin device deleted (Custom)
+	def nonpluginDeviceDeleted (self, dev):
+		try:
+			self.logger.threaddebug ("Non plugin device '{0}' deleted".format(dev.name))
+			
+			self._callBack (BEFORE, [dev])
+			
+			self._callBack (AFTER, [dev])
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))					
 			
 	# Plugin device deleted (Custom)
 	def pluginDeviceDeleted (self, dev):
@@ -672,12 +734,27 @@ class plug:
 				if success:
 					stateVal = action.actionValue
 					
+			elif action.deviceAction == indigo.kDimmerRelayAction.SetColorLevels:
+				command = "set color levels"
+				stateName = "brightnessLevel"
+				
+				if ext.valueValid (dev.states, stateName):
+					success = self._callBack (NOTHING, [dev, action.actionValue], "onDeviceCommandSetColor")
+					stateVal = action.actionValue
+					stateName = ""
+				else:
+					stateName = ""
+					success = False
+				
+				if success:
+					stateVal = action.actionValue
+					
 			else:
 				self.logger.error ("Unknown device command: " + unicode(action))
 					
 					
 			if success:
-				dev.updateStateOnServer(stateName, stateVal)
+				if stateName != "": dev.updateStateOnServer(stateName, stateVal)
 				self.logger.info(u"sent \"%s\" %s" % (dev.name, command))
 			else:
 				self.logger.error (u"send \"%s\" %s failed" % (dev.name, command))
@@ -1167,6 +1244,9 @@ class plug:
 	# Check for updates
 	def pluginMenuCheckUpdates (self):
 		try:
+			# Rendered obsolete by the Indigo Plugin Store
+			return
+			
 			self.factory.update.check (True)			
 		
 		except Exception as e:

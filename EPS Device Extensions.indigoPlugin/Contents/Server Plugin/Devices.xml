@@ -3,6 +3,7 @@
 <Devices>
 	<!-- =========== WEATHER EXTENSION =========== -->
 	<Device type="custom" id="epsdews">
+		<SupportURL>https://github.com/Colorado4Wheeler/Device-Extensions/wiki/Extension:-Weather</SupportURL>
 		<Name>Weather Extension</Name>
 		<ConfigUI>
 			<Field id="device" type="menu">
@@ -155,27 +156,215 @@ Is raining (yes/no)
 		<UiDisplayStateId>statedisplay</UiDisplayStateId>
 	</Device>
 	
-	<!-- =========== THERMOSTAT WRAPPER =========== -->
-	<Device type="thermostat" id="thermostat-wrapper">
-		<Name>Thermostat Wrapper</Name>
+	<!-- =========== HUE GROUP =========== -->
+	<Device type="dimmer" id="hue-color-group">
+		<Name>Virtual Color/Ambiant Hue Device Group</Name>
 		<ConfigUI>
 			<!-- Start Homebridge Buddy Integration Block -->		
-			<Field type="checkbox" id="hbbIntegrated" defaultValue="false" hidden="true">
+			<Field type="checkbox" id="hbbIntegrated" defaultValue="false" hidden="false">
 				<Label>Enable for HomeKit</Label>
 				<Description>Integrate this device into Homebridge Buddy</Description>
 				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
 			</Field>
 		
-			<Field type="menu" id="hbbServer" defaultValue="default" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+			<Field type="menu" id="hbbServer" defaultValue="1953136859" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
 				<Label>Homebridge server:</Label>
 				<List class="self" filter="" method="hbbIntegrationServerList" dynamicReload="true"/>
 				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
 			</Field>
 			
-			<Field type="menu" id="hbbTreatAs" defaultValue="default" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+			<Field type="menu" id="hbbTreatAs" defaultValue="none" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
 				<Label>Homebridge device type:</Label>
 				<List class="self" filter="" method="hbbIntegrationTreatAsList" dynamicReload="true"/>
 				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<!-- not yet implemented in API but here for future proofing -->	
+			<Field type="textfield" id="hbbAlias" defaultValue="" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" hidden="true">
+				<Label>Alias Name:</Label>
+			</Field>
+			
+			<Field type="separator" id="sep_hbbConnector" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"/>
+			<!-- End Homebridge Buddy Integration Block -->
+			
+			<!-- Start Indigo Stock Dimmer Fields With RGB -->
+			<Field id="address" type="textfield" hidden="true" />
+			<Field id="nameOnHub" type="textfield" hidden="true" />
+			<Field id="savedBrightness" type="textfield" hidden="true" />
+			<Field id="modelId" type="textfield" hidden="true" />
+			<Field id="manufacturerName" type="textfield" hidden="true" />
+			<Field id="swVersion" type="textfield" hidden="true" />
+			<Field id="type" type="textfield" hidden="true" />
+			<Field id="uniqueId" type="textfield" hidden="true" />
+			
+			<Field id="SupportsColor" type="checkbox" hidden="true" defaultValue="true" />
+			<Field id="SupportsRGB" type="checkbox" hidden="true" defaultValue="true" />
+			<Field id="SupportsWhite" type="checkbox" hidden="true" defaultValue="true" />
+			<Field id="SupportsWhiteTemperature" type="checkbox" hidden="true" defaultValue="true" />
+			<Field id="WhiteTemperatureMin" type="textfield" hidden="true" defaultValue="2000" />
+			<Field id="WhiteTemperatureMax" type="textfield" hidden="true" defaultValue="6500" />
+			<Field id="SupportsRGBandWhiteSimultaneously" type="checkbox" hidden="true" defaultValue="false" />
+		
+			<!-- End Indigo Stock Dimmer Fields With RGB -->
+			
+			<Field type="list" id="huelights" defaultValue="" >
+				<Label>Devices:</Label>
+				<List class="self" filter="#filtereddevices#[index=huelights, excludeself=true, proptrue=supportsRGB, onlywith=brightnessLevel]" method="getCustomList" dynamicReload="true"/>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="onwhen" defaultValue="any" >
+				<Label>Group goes ON when:</Label>
+				<List>
+					<Option value="all">All devices are ON</Option>
+					<Option value="any">Any device is ON</Option>
+				</List>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="keepsync" defaultValue="none" >
+				<Label>When different sync to:</Label>
+				<List class="self" filter="#plugin#[list=keepsync, nocache=false, callback=listHueSyncTo]" method="getCustomList" dynamicReload="true"/>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="separator" id="sep_beforegroupoff" visibleBindingId="beforeoff" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"/>
+			
+			<Field type="checkbox" id="beforeoff" defaultValue="false" >
+				<Label> </Label>
+				<Description>Before group goes OFF reset colors</Description>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="textfield" id="resetbrightness" defaultValue="0" visibleBindingId="beforeoff" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+				<Label>Brightness:</Label>
+			</Field>
+			
+			<Field type="textfield" id="resettemp" defaultValue="6500" visibleBindingId="beforeoff" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+				<Label>Temperature:</Label>
+			</Field>
+			
+			<Field type="textfield" id="resetwhite" defaultValue="1200" visibleBindingId="beforeoff" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" >
+				<Label>White Level:</Label>
+			</Field>
+			
+			<Field type="textfield" id="resetred" defaultValue="100" visibleBindingId="beforeoff" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" >
+				<Label>Red:</Label>
+			</Field>
+			
+			<Field type="textfield" id="resetgreen" defaultValue="100" visibleBindingId="beforeoff" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" >
+				<Label>Green:</Label>
+			</Field>
+			
+			<Field type="textfield" id="resetblue" defaultValue="100" visibleBindingId="beforeoff" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" >
+				<Label>Blue:</Label>
+			</Field>
+						
+			
+		</ConfigUI>
+		
+		<States>
+			<State id="statedisplay">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Current device state</TriggerLabel>
+				<ControlPageLabel>Current device state</ControlPageLabel>
+			</State>
+			
+			<State id="sep1">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="hue">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Hue (°)</TriggerLabel>
+				<ControlPageLabel>Hue (°)</ControlPageLabel>
+			</State>
+			<State id="saturation">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Saturation (%)</TriggerLabel>
+				<ControlPageLabel>Saturation (%)</ControlPageLabel>
+			</State>
+			<State id="colorRed">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Red Level (0-255)</TriggerLabel>
+				<ControlPageLabel>Red Level (0-255)</ControlPageLabel>
+			</State>
+			<State id="colorGreen">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Green Level (0-255)</TriggerLabel>
+				<ControlPageLabel>Green Level (0-255)</ControlPageLabel>
+			</State>
+			<State id="colorBlue">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Blue Level (0-255)</TriggerLabel>
+				<ControlPageLabel>Blue Level (0-255)</ControlPageLabel>
+			</State>
+			<State id="colorX">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>X Color Chromaticity</TriggerLabel>
+				<ControlPageLabel>X Color Chromaticity (CIE 1931)</ControlPageLabel>
+			</State>
+			<State id="colorY">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Y Color Chromaticity</TriggerLabel>
+				<ControlPageLabel>Y Color Chromaticity (CIE 1931)</ControlPageLabel>
+			</State>
+			<State id="colorTemp">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Color Temperature (K)</TriggerLabel>
+				<ControlPageLabel>Color Temperature (K)</ControlPageLabel>
+			</State>
+			<State id="colorMode">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Color Mode</TriggerLabel>
+				<ControlPageLabel>Color Mode</ControlPageLabel>
+			</State>
+			<State id="alertMode">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Alert Mode</TriggerLabel>
+				<ControlPageLabel>Alert Mode</ControlPageLabel>
+			</State>
+			<State id="effect">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Effect</TriggerLabel>
+				<ControlPageLabel>Effect</ControlPageLabel>
+			</State>
+			<State id="online">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Online</TriggerLabel>
+				<ControlPageLabel>Online</ControlPageLabel>
+			</State>
+		</States>
+		<UiDisplayStateId>statedisplay</UiDisplayStateId>
+		
+	</Device>
+	
+	<!-- =========== THERMOSTAT WRAPPER =========== -->
+	<Device type="thermostat" id="thermostat-wrapper">
+		<Name>Thermostat Wrapper</Name>
+		<ConfigUI>
+			<!-- Start Homebridge Buddy Integration Block -->		
+			<Field type="checkbox" id="hbbIntegrated" defaultValue="false" hidden="false">
+				<Label>Enable for HomeKit</Label>
+				<Description>Integrate this device into Homebridge Buddy</Description>
+				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
+			</Field>
+		
+			<Field type="menu" id="hbbServer" defaultValue="1953136859" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+				<Label>Homebridge server:</Label>
+				<List class="self" filter="" method="hbbIntegrationServerList" dynamicReload="true"/>
+				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="hbbTreatAs" defaultValue="none" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+				<Label>Homebridge device type:</Label>
+				<List class="self" filter="" method="hbbIntegrationTreatAsList" dynamicReload="true"/>
+				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<!-- not yet implemented in API but here for future proofing -->	
+			<Field type="textfield" id="hbbAlias" defaultValue="" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" hidden="true">
+				<Label>Alias Name:</Label>
 			</Field>
 			
 			<Field type="separator" id="sep_hbbConnector" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"/>
@@ -234,11 +423,13 @@ Is raining (yes/no)
 					<Option value="thermostat">Wrap a Thermostat</Option>
 					<Option value="temp">Temperature Value</Option>
 					<Option value="humidity">Humidity Value</Option>
+					<Option value="heatsetpoint">Heat Set Point Value</Option>
+					<Option value="coolsetpoint">Cool Set Point Value</Option>
 				</List>
 				<CallbackMethod>formFieldChanged</CallbackMethod>
 			</Field>
 			
-			<Field type="menu" id="temperatureType" defaultValue="F" visibleBindingId="optionSelect" visibleBindingValue="temp" alwaysUseInDialogHeightCalc="true">
+			<Field type="menu" id="temperatureType" defaultValue="F" visibleBindingId="optionSelect" visibleBindingValue="temp,heatsetpoint,coolsetpoint" alwaysUseInDialogHeightCalc="true">
 				<Label>Display temperature as:</Label>
 				<List>
 					<Option value="F">Fahrenheit</Option>
@@ -261,7 +452,7 @@ Is raining (yes/no)
 				<CallbackMethod>formFieldChanged</CallbackMethod>
 			</Field>
 			
-			<Field type="menu" id="option1Type" defaultValue="device" visibleBindingId="optionSelect" visibleBindingValue="temp,humidity" alwaysUseInDialogHeightCalc="true">
+			<Field type="menu" id="option1Type" defaultValue="device" visibleBindingId="optionSelect" visibleBindingValue="temp,humidity,heatsetpoint,coolsetpoint" alwaysUseInDialogHeightCalc="true">
 				<Label>Object:</Label>
 				<List>
 					<Option value="device">Device</Option>
