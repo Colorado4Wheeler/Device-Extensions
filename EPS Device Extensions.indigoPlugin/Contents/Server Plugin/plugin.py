@@ -969,7 +969,6 @@ class Plugin(indigo.PluginBase):
 					result = airfoilPlugin.executeAction("connect", deviceId=SPEAKERID, waitUntilDone=True)
 					if devAction.props["delay"] !="": time.sleep(int(devAction.props["delay"]))
 				
-					say = devAction.props["say"]
 					indigo.server.speak(say, waitUntilDone=True)
 
 					if devAction.props["disconnect"] !="": time.sleep(int(devAction.props["disconnect"]))
@@ -981,7 +980,6 @@ class Plugin(indigo.PluginBase):
 					
 			else:
 				if devAction.props["delay"] !="": time.sleep(int(devAction.props["delay"]))
-				say = devAction.props["say"]
 				indigo.server.speak(say, waitUntilDone=True)
 		
 		except Exception as e:
