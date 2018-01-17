@@ -81,16 +81,6 @@ Using this method is nit-picking performance since polling is almost equally as 
     	<CallbackMethod>pluginMenuSupportInfo</CallbackMethod>
     </MenuItem>
     
-    <MenuItem id="supportLog">
-    	<Name>Support Data Dump</Name>
-    	<CallbackMethod>pluginMenuSupportData</CallbackMethod>
-    </MenuItem>
-    
-    <MenuItem id="supportLogEx">
-    	<Name>Support Comprehensive Data Dump</Name>
-    	<CallbackMethod>pluginMenuSupportDataEx</CallbackMethod>
-    </MenuItem>
-    
     <MenuItem id="sep_update"/>
     
         <MenuItem id="advancedPluginActions">
@@ -166,8 +156,4 @@ Using this method is nit-picking performance since polling is almost equally as 
         </ConfigUI>
     </MenuItem>
     
-    <MenuItem id="update">
-    	<Name>Check For Plugin Update</Name>
-    	<CallbackMethod>pluginMenuCheckUpdates</CallbackMethod>
-    </MenuItem>
 </MenuItems>

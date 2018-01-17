@@ -33,5 +33,13 @@
 	</Field>
    	
    	<!-- Any specialized plugin-specific options, hidden or otherwise, for THIS plugin -->
+   	
+   	<Field type="menu" id="conversionAddress" defaultValue="method">
+		<Label>Conversion address data:</Label>
+		<List>
+			<Option value="method">Conversion Method</Option>
+			<Option value="object">Object Name Being Converted</Option>
+		</List>
+	</Field>
 	
 </PluginConfig>

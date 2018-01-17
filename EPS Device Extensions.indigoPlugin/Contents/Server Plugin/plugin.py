@@ -54,7 +54,7 @@ class Plugin(indigo.PluginBase):
 		self.thermostats = []
 		self.resetDevices = [] # Devices that get high/low resets every 24 hours
 		self.thermostatPreset = [] # Thermostats that have active presets to expire
-		
+		self.updateDevices = [] # Anything that needs to have the status updated regularly but the referenced device doesn't have a state to trigger it
 		
 		
 	################################################################################
@@ -74,9 +74,62 @@ class Plugin(indigo.PluginBase):
 			upgradeSuccess = True
 			
 			if ext.valueValid (self.pluginPrefs, "currentVersion") == False:
-				# They upgraded from 1.53 or earlier, start by finding all "lastChanged" states being used
-				self.logger.warn ("Upgrading plugin from version 1.53 or earlier")
+				previousVersion = 153 # Force it to think we are upgrading from 1.53 to ensure all updates are done
+			else:
+				previousVersion = self.pluginPrefs["currentVersion"]
+				previousVersion = int(previousVersion.replace(".", ""))
 				
+			# Perform upgrades in REVERSE order so that each one gets done as needed before we write the current version
+			if previousVersion < 210: # 2.1.0
+				# Upgrade devices modified in 2.0.5+ (2.1.0 previews) and earlier
+				self.logger.warn ("Upgrading plugin from version 2.0.6 (version 2.1.0 preview builds) or later")
+				
+				# Changing from using the checkbox to indicate a device to using a dropdown box
+				for dev in indigo.devices.iter(self.pluginId):
+					if "chdevice" in dev.pluginProps:
+						self.logger.info ("...upgrading {1} device '{0}' device checkbox to combobox".format(dev.name, dev.model))
+						
+						props = dev.pluginProps
+						
+						if props["chdevice"]:
+							props["objectype"] = "device"
+						else:
+							props["objectype"] = "variable"
+							indigo.server.log("variable")
+							
+						# While we are here lets ensure that static True/False gets the new objectype
+						if (props["action"] == "true" or props["action"] == "false") and props["objectype"] != "static":
+							self.logger.info ("......static true/false detected, upgrading object to static")
+							props["objectype"] = "static"
+							
+						# Add new fields since this is a conversion device
+						self.logger.info ("......adding fields to device created in 2.1.0")
+						if "extraaction" not in props: props["extraaction"] = ""
+						if "threshold" not in props: props["threshold"] = "60"
+						
+						dev.replacePluginPropsOnServer (props)
+						
+				# Add the conversion address preference to the plugin prefs
+				if "conversionAddress" not in self.pluginPrefs:
+					self.logger.info ("...adding plugin preference for Conversion Extension address format")
+					
+					self.pluginPrefs["conversionAddress"] = "object"
+					
+				# Clean up potential plugin pref garbage:
+				self.logger.info ("...cleaning up unused values from plugin prefs")
+				
+				if "deviceList" in self.pluginPrefs: del self.pluginPrefs["deviceList"]
+				if "homebridgeHost" in self.pluginPrefs: del self.pluginPrefs["homebridgeHost"]
+				if "homebridgeName" in self.pluginPrefs: del self.pluginPrefs["homebridgeName"]
+				if "homebridgePass" in self.pluginPrefs: del self.pluginPrefs["homebridgePass"]
+				if "homebridgePort" in self.pluginPrefs: del self.pluginPrefs["homebridgePort"]
+				if "homebridgeUser" in self.pluginPrefs: del self.pluginPrefs["homebridgeUser"]
+				if "lastUpdateCheck" in self.pluginPrefs: del self.pluginPrefs["lastUpdateCheck"]
+						
+			if previousVersion < 205:
+				self.logger.warn ("Upgrading plugin from version 2.0.5 or earlier")
+			
+				# finding all "lastChanged" states being used
 				for dev in indigo.devices.iter(self.pluginId):
 					# Convert the legacy lastChanged state
 					if ext.valueValid (dev.pluginProps, "states", True) and dev.pluginProps["states"] == "lastChanged":
@@ -84,17 +137,14 @@ class Plugin(indigo.PluginBase):
 						props = dev.pluginProps
 						props["states"] = "attr_lastChanged"
 						dev.replacePluginPropsOnServer (props)
-						
+					
 					# Check for .UI states in anything except conversions
 					if dev.deviceTypeId != "epsdecon" and ext.valueValid (dev.pluginProps, "states", True) and dev.pluginProps["states"][-3:] == ".ui":
 						self.logger.warn ("Device '{0}' using a UI state which can be unpredictable and cause errors at run-time, upgrade cannot complete until this is resolved.".format(dev.name))
 						upgradeSuccess = False
-						
-			else:
-				previousVersion = self.pluginPrefs["currentVersion"]
-				
+					
 			if upgradeSuccess:
-				pass
+				self.pluginPrefs["currentVersion"] = self.pluginVersion
 			
 			else:
 				self.logger.error ("One or more problems are preventing the plugin from upgrading your settings and devices, please correct the issues and restart the plugin.")
@@ -129,6 +179,15 @@ class Plugin(indigo.PluginBase):
 							parent = indigo.devices[devDetail["id"]]
 							self.resetHighsLows (parent)
 			
+			# Devices needing ongoing refreshes
+			if len(self.updateDevices) > 0:
+				d = indigo.server.getTime()
+				
+				for udev in self.updateDevices:
+					if udev in indigo.devices:
+						dev = indigo.devices[udev]
+						if dtutil.dateDiff ("seconds", d, str(dev.lastChanged)) >= 59:
+							self.updateFromPluginDevice (dev)
 		
 			# Irrigation timers (returns quickly if irrigation is idle)
 			if "epsdeirr" in eps.cache.pluginItems:
@@ -162,7 +221,8 @@ class Plugin(indigo.PluginBase):
 		
 		try:
 			if dev.deviceTypeId == "epsdecon":
-				if dev.pluginProps["chdevice"] and ext.valueValid (dev.pluginProps, "device", True) and ext.valueValid (dev.pluginProps, "states", True):
+				#if dev.pluginProps["chdevice"] and ext.valueValid (dev.pluginProps, "device", True) and ext.valueValid (dev.pluginProps, "states", True):
+				if dev.pluginProps["objectype"] == "device" and ext.valueValid (dev.pluginProps, "device", True) and ext.valueValid (dev.pluginProps, "states", True):
 					if dev.pluginProps["states"][0:5] != "attr_": ret[int(dev.pluginProps["device"])] = [dev.pluginProps["states"]]
 								
 			if dev.deviceTypeId == "epsdews":
@@ -248,7 +308,8 @@ class Plugin(indigo.PluginBase):
 		
 		try:
 			if dev.deviceTypeId == "epsdecon":
-				if dev.pluginProps["chdevice"] and ext.valueValid (dev.pluginProps, "device", True) and ext.valueValid (dev.pluginProps, "states", True):
+				#if dev.pluginProps["chdevice"] and ext.valueValid (dev.pluginProps, "device", True) and ext.valueValid (dev.pluginProps, "states", True):
+				if dev.pluginProps["objectype"] == "device" and ext.valueValid (dev.pluginProps, "device", True) and ext.valueValid (dev.pluginProps, "states", True):
 					if dev.pluginProps["states"][0:5] == "attr_": ret[int(dev.pluginProps["device"])] = [dev.pluginProps["states"]]
 			
 			if dev.deviceTypeId == "epsdeirr":	
@@ -349,6 +410,17 @@ class Plugin(indigo.PluginBase):
 			errorDict = indigo.Dict()
 			success = True
 			
+			# Make sure if this device is not doing elapsed minutes that is is not getting constantly polled
+			if typeId == "epsdecon":
+				if dev.deviceTypeId == "epsdecon" and dev.pluginProps["action"] != "dtmin":
+					if dev.id in self.updateDevices:
+						newdevices = []
+						for d in self.updateDevices:
+							if d != dev.id:
+								newdevices.append(d)
+								
+						self.updateDevices = newdevices
+			
 			if typeId == "thermostat-wrapper":
 				(hbbValuesDict, hbbErrorsDict) = hbb.validateDeviceConfigUi (valuesDict, typeId, devId)
 				if len(hbbErrorsDict) > 0:
@@ -433,7 +505,11 @@ class Plugin(indigo.PluginBase):
 						devDetail["lastreset"] = d.strftime("%Y-%m-%d") # Because it's always at midnight, we only need to store the date, not the time
 						
 					self.resetDevices.append (devDetail)
-			
+					
+			# For Date Time to Elapsed Minutes we have to monitor constantly, add to update devices
+			if dev.deviceTypeId == "epsdecon" and dev.pluginProps["action"] == "dtmin":
+				self.updateDevices.append (dev.id)
+							
 		except Exception as e:
 			self.logger.error (ext.getException(e))		
 			
@@ -444,6 +520,19 @@ class Plugin(indigo.PluginBase):
 		try:
 			if typeId == "thermostat-wrapper": return self.onAfter_formFieldChanged_Thermostat_Wrapper (valuesDict, typeId, devId)	
 			if typeId == "hue-color-group": return self.onAfter_formFieldChanged_Hue_Color_Group (valuesDict, typeId, devId)	
+			
+			if typeId == "epsdecon":
+				if valuesDict["action"] == "true" or valuesDict["action"] == "false":
+					valuesDict["objectype"] = "static"
+					valuesDict["device"] = ""
+					valuesDict["states"] = ""
+				
+				else:
+					if valuesDict["objectype"] == "static": valuesDict["objectype"] = "device"
+					
+				if valuesDict["objectype"] == "static" and valuesDict["action"] != "true" and valuesDict["action"] != "false":
+					values["objectType"] = "true" # Default to one of the static values if they choose static and aren't on one already
+					
 			
 			if typeId == "epsdews":
 				if ext.valueValid (valuesDict, "device", True):
@@ -547,9 +636,23 @@ class Plugin(indigo.PluginBase):
 			d["temperatureType"] = valuesDict["temperatureType"]
 			d["thermostatdevice"] = valuesDict["thermostatdevice"]
 			
+			# At least during testing we have locked out changing from device to anything else but we will force it here for some settings
+			indigo.server.log(valuesDict["optionSelect"])
+			if valuesDict["optionSelect"] == "temp" or valuesDict["optionSelect"] == "humidity":
+				valuesDict["option1Type"] = "device"
+			
+			elif valuesDict["optionSelect"] == "heatsetpoint" or valuesDict["optionSelect"] == "coolsetpoint":
+				valuesDict["option1Type"] = "device"
+			
+			elif valuesDict["optionSelect"] == "thermostat":
+				valuesDict["option1Type"] = "thermostat"	
+			
+			else:
+				valuesDict["option1Type"] = "action"	
+				
 			# Sanity check so we don't add empty values to the JSON table
 			if d["option1Device"] == "" and d["option1Action"]  == "" and d["option1Variable"]  == "" and d["thermostatdevice"] == "":
-				return valuesDict
+				return valuesDict	
 	
 			# Save new JSON data
 			newDeviceSettings = []
@@ -761,6 +864,21 @@ class Plugin(indigo.PluginBase):
 			self.logger.error (ext.getException(e))	
 			
 		return valuesDict
+		
+	#
+	# Clear conversion settings
+	#
+	def btnClearConversionSettings (self, valuesDict, typeId, devId):
+		try:
+			# Clear fields	
+			if valuesDict["action"] == "dtmin":
+				valuesDict["extraaction"] = ""
+				valuesDict["threshold"] = "60"
+			
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return valuesDict	
 	
 	#
 	# Derive parent, child and value from a plugin device then update as if a watched state/attribute changed
@@ -770,7 +888,8 @@ class Plugin(indigo.PluginBase):
 			self.logger.threaddebug ("Running plugin updateFromPluginDevice")
 			
 			if dev.deviceTypeId == "epsdecon":
-				if dev.pluginProps["chdevice"] and ext.valueValid (dev.pluginProps, "device", True) and ext.valueValid (dev.pluginProps, "states", True):
+				#if dev.pluginProps["chdevice"] and ext.valueValid (dev.pluginProps, "device", True) and ext.valueValid (dev.pluginProps, "states", True):
+				if dev.pluginProps["objectype"] == "device"  and ext.valueValid (dev.pluginProps, "device", True) and ext.valueValid (dev.pluginProps, "states", True):
 					if int(dev.pluginProps["device"]) not in indigo.devices:
 						self.logger.error ("Device '{0}' is referencing device ID {1} but that device is no longer an Indigo device.  Please change the device reference or remove '{0}' to prevent this error".format(dev.name, dev.pluginProps["device"]))
 						return False
@@ -784,6 +903,20 @@ class Plugin(indigo.PluginBase):
 						attrib = getattr(child, attribName)
 						
 						self.updateDevice (dev, child, attrib)
+						
+				if dev.pluginProps["objectype"] == "variable"  and ext.valueValid (dev.pluginProps, "variable", True):		
+					if int(dev.pluginProps["variable"]) in indigo.variables:
+						child = indigo.variables[int(dev.pluginProps["variable"])]
+						
+						self.updateDevice (dev, child, child.value)
+						
+				if dev.pluginProps["objectype"] == "static":	
+					if dev.pluginProps["action"] == "true":
+						value = True
+					else:
+						value = False
+							
+					self.updateDevice (dev, None, value)
 						
 			elif dev.deviceTypeId == "epsdeurl":
 				# There isn't anything really to update for now until we parse URL return data, except the address	
@@ -816,26 +949,33 @@ class Plugin(indigo.PluginBase):
 			if parent.deviceTypeId == "epsdecon":
 				if parent.pluginProps["action"] == "true" or parent.pluginProps["action"] == "false":
 					# These are static and have no device
-					if parent.address != "Static Value Extension":
+					if parent.address != "Static Value of " + "True" and parent.address != "Static Value of " + "False":
 						props = parent.pluginProps
-						props["address"] = "Static Value Extension"
+						props["address"] = "Static Value of "
+						if parent.pluginProps["action"] == "true":
+							props["address"] += "True"
+						else:
+							props["address"] += "False"
+							
 						parent.replacePluginPropsOnServer (props)			
 				else:
 					self.updateDeviceAddress (parent, child)
 			
-				if parent.pluginProps["action"] == "boolstr": return self._booleanToString (parent, child, value)
-				if parent.pluginProps["action"] == "strtocase": return self._stringToCase (parent, child, value)
-				if parent.pluginProps["action"] == "strtonum": return self._stringToNumber (parent, child, value)
-				if parent.pluginProps["action"] == "dtformat": return self._dateReformat (parent, child, value)
-				if parent.pluginProps["action"] == "string": return self._convertToString (parent, child, value)
-				if parent.pluginProps["action"] == "ctof": return self._celsiusToFahrenheit (parent, child, value)	
-				if parent.pluginProps["action"] == "ftoc": return self._fahrenheitToCelsius (parent, child, value)	
-				if parent.pluginProps["action"] == "lux": return self._luxToString (parent, child, value)
-				if parent.pluginProps["action"] == "booltype": return self._booleanToType (parent, child, value)
-				if parent.pluginProps["action"] == "true": return self._booleanStatic (parent, child, True)
-				if parent.pluginProps["action"] == "false": return self._booleanStatic (parent, child, False)
-				if parent.pluginProps["action"] == "dtmin": return self._datetimeToElapsedMinutes (parent, child, value)
-				if parent.pluginProps["action"] == "bool": return self._stateToBoolean (parent, child, value)
+				return self.getConvertedValue (parent.pluginProps, parent, child, value)
+				
+				#if parent.pluginProps["action"] == "boolstr": return self._booleanToString (parent, child, value)
+				#if parent.pluginProps["action"] == "strtocase": return self._stringToCase (parent, child, value)
+				#if parent.pluginProps["action"] == "strtonum": return self._stringToNumber (parent, child, value)
+				#if parent.pluginProps["action"] == "dtformat": return self._dateReformat (parent, child, value)
+				#if parent.pluginProps["action"] == "string": return self._convertToString (parent, child, value)
+				#if parent.pluginProps["action"] == "ctof": return self._celsiusToFahrenheit (parent, child, value)	
+				#if parent.pluginProps["action"] == "ftoc": return self._fahrenheitToCelsius (parent, child, value)	
+				#if parent.pluginProps["action"] == "lux": return self._luxToString (parent, child, value)
+				#if parent.pluginProps["action"] == "booltype": return self._booleanToType (parent, child, value)
+				#if parent.pluginProps["action"] == "true": return self._booleanStatic (parent, child, True)
+				#if parent.pluginProps["action"] == "false": return self._booleanStatic (parent, child, False)
+				#if parent.pluginProps["action"] == "dtmin": return self._datetimeToElapsedMinutes (parent, child, value)
+				#if parent.pluginProps["action"] == "bool": return self._stateToBoolean (parent, child, value)
 				
 			elif parent.deviceTypeId == "epsdews": 
 				self.updateDeviceAddress (parent, child)
@@ -850,11 +990,11 @@ class Plugin(indigo.PluginBase):
 				return self._updateIrrigation (parent, child, value)
 				
 			elif parent.deviceTypeId == "thermostat-wrapper": 
-				#self.updateDeviceAddress (parent, indigo.devices[int(parent.pluginProps["option1Device"])])
+				self.updateDeviceAddress (parent, None)
 				return self._updateThermostatWrapper (parent, child, value)
 				
 			elif parent.deviceTypeId == "hue-color-group": 
-				#self.updateDeviceAddress (parent, indigo.devices[int(parent.pluginProps["option1Device"])])
+				self.updateDeviceAddress (parent, None)
 				return self._updateVirtualColorHueGroup (parent, child, value)	
 				
 		
@@ -867,18 +1007,193 @@ class Plugin(indigo.PluginBase):
 	#
 	def updateDeviceAddress (self, parent, child):
 		try:
-			self.logger.threaddebug ("Running plugin updateDeviceAddress")
-			
-			if parent.address != child.name + " Extension":
+			if self.pluginPrefs["conversionAddress"] == "object":
+				if parent.address != child.name + " Extension":
+					props = parent.pluginProps
+					props["address"] = child.name + " Extension"
+					parent.replacePluginPropsOnServer (props)
+								
+			elif self.pluginPrefs["conversionAddress"] == "method":
+				address = "Unknown Conversion"
+				
+				if "action" in parent.pluginProps:
+					if parent.pluginProps["action"] == "ftoc": address = "Fahrenheit to Celsius"
+					if parent.pluginProps["action"] == "ctof": address = "Celsius to Fahrenheit"
+					if parent.pluginProps["action"] == "lux": address = "Lux to Word State"
+					if parent.pluginProps["action"] == "bool": address = "State to Boolean"
+					if parent.pluginProps["action"] == "dtmin": address = "Date/Time to Elapsed Minutes"
+					if parent.pluginProps["action"] == "boolstr": address = "Boolean to String"
+					if parent.pluginProps["action"] == "booltype": address = "Boolean Type"
+					if parent.pluginProps["action"] == "true": address = "Always True"
+					if parent.pluginProps["action"] == "false": address = "Always False"
+					if parent.pluginProps["action"] == "string": address = "To String"
+					if parent.pluginProps["action"] == "dtformat": address = "Date/Time Format"
+					if parent.pluginProps["action"] == "strtonum": address = "String to Number"
+					if parent.pluginProps["action"] == "strtocase": address = "String to Cased String"
+					
+					if parent.address != address:
+						props = parent.pluginProps
+						props["address"] = address
+						parent.replacePluginPropsOnServer (props)
+						
+			if parent.deviceTypeId == "thermostat-wrapper":			
 				props = parent.pluginProps
-				props["address"] = child.name + " Extension"
+				
+				deviceSettings = json.loads(parent.pluginProps["deviceSettings"])
+				thermostatdevice = ""
+				
+				for d in deviceSettings:
+					if d["key"] == "thermostat" and d["thermostatdevice"] != "": 
+						thermostatdevice = d["thermostatdevice"]
+						break
+				
+				if thermostatdevice != "":
+					props["address"] = indigo.devices[int(thermostatdevice)].name + " Wrap"
+				
+				else:
+					props["address"] = "Custom Functions"
+					
+				parent.replacePluginPropsOnServer (props)	
+				
+			if parent.deviceTypeId == "hue-color-group":
+				props = parent.pluginProps
+				props["address"] = str(len(props["huelights"])) + " Group Members"
 				parent.replacePluginPropsOnServer (props)
 				
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
 			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
 			
+	################################################################################
+	# MISC ACTIONS
+	################################################################################	
+	
+	#
+	# Conversion action
+	#
+	def conversionAction (self, devAction):
+		try:
+			valuesDict = devAction.props
+			value = ""
 			
+			if devAction.props["objectype"] == "device"  and ext.valueValid (devAction.props, "device", True) and ext.valueValid (devAction.props, "states", True):
+				if int(devAction.props["device"]) not in indigo.devices:
+					self.logger.error ("Device '{0}' is referencing device ID {1} but that device is no longer an Indigo device.  Please change the device reference or remove '{0}' to prevent this error".format("Conversion Action", devAction.props))
+					return False
+			
+				child = indigo.devices[int(devAction.props["device"])]
+				
+				if devAction.props["states"][0:5] != "attr_": 
+					value = self.getConvertedValue (devAction.props, devAction, child, child.states[devAction.props["states"]], True)
+					
+				else:
+					attribName = devAction.props["states"].replace ("attr_", "")
+					attrib = getattr(child, attribName)
+					
+					value = self.getConvertedValue (devAction.props, devAction, child, attrib, True)
+					
+			if devAction.props["objectype"] == "variable"  and ext.valueValid (devAction.props, "variable", True):		
+				if int(devAction.props["variable"]) in indigo.variables:
+					child = indigo.variables[int(devAction.props["variable"])]
+					
+					value = self.getConvertedValue (devAction.props, devAction, child, child.value, True)
+					
+			if devAction.props["objectype"] == "static":	
+					if devAction.props["action"] == "true":
+						xvalue = True
+					else:
+						xvalue = False
+							
+					value = self.getConvertedValue (devAction.props, devAction, None, xvalue, True)		
+
+			# OUTPUT			
+			if devAction.props["outputVariable"]:
+				if devAction.props["saveToVariable"] != "" and int(devAction.props["saveToVariable"]) in indigo.variables:
+					var = indigo.variables[int(devAction.props["saveToVariable"])]
+					var.value = value
+					var.replaceOnServer()
+				
+			if devAction.props["outputConsole"]:
+				self.logger.info ("Conversion Action Output: " + value)
+			
+			if devAction.props["outputSpeech"]:
+				self.extendedSpeak (devAction, None, None, value)
+			
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+	#
+	# Speak to Airfoil speaker
+	#
+	def extendedSpeak (self, devAction, unknown, unknown2, forceSay=""):
+		try:
+			say = devAction.props["say"]
+			if forceSay != "": say = forceSay # For calling this from another action
+			
+			if say == "": 
+				self.logger.error ("An action was raised to speak but nothing was entered to say")
+				return
+			
+			# Check for up to 10 keywords
+			for i in range (0, 10):
+				keywords = dict([nvstring.split(":") for nvstring in [line for line in say.split("%%") if ":" in line]])
+				
+				if "v" in keywords:
+					if int(keywords["v"]) in indigo.variables:
+						say = say.replace ("%%v:" + keywords["v"] + "%%", unicode(indigo.variables[int(keywords["v"])].value) )
+					else:
+						self.logger.error ("Unable to find variable {0} to inject into speech action, ignoring".format(keywords["v"]))
+						say = say.replace ("%%v:" + keywords["v"] + "%%", "")
+					
+				# Device state
+				if "ds" in keywords:
+					devstate = keywords["ds"]
+					devstate = devstate.split("|")
+					
+					if int(devstate[0]) in indigo.devices:
+						dev = indigo.devices[int(devstate[0])]
+						if devstate[1] in dev.states:
+							say = say.replace ("%%ds:" + devstate[0] + "|" + devstate[1] + "%%", unicode(dev.states[devstate[1]]) )
+						else:
+							self.logger.error ("Unable to find state '{0}' in device '{1}' states to inject into speech action, ignoring".format(devstate[1], dev.name))
+							
+					else:
+						self.logger.error ("Unable to find device {0} to inject into speech action, ignoring".format(devstate[0]))
+
+			# If we aren't being called from another function
+			if forceSay == "": self.logger.info ("Extended speech is saying: {0}".format(say))
+
+			if devAction.props["useAirfoil"]:			
+				airfoilPlugin = indigo.server.getPlugin("com.perceptiveautomation.indigoplugin.airfoilpro")
+			
+				SPEAKERID = int(devAction.props["speaker"])
+
+				if airfoilPlugin.isEnabled():
+					try:
+						result = airfoilPlugin.executeAction("connect", deviceId=SPEAKERID, waitUntilDone=True)
+					except Exception as ex:
+						self.logger.error ("Extended speech was unable to connect to the Airfoil speaker, the message from Airfoil is: " + unicode(ex))
+						return
+						
+					if devAction.props["delay"] !="": time.sleep(int(devAction.props["delay"]))
+				
+					indigo.server.speak(say, waitUntilDone=True)
+
+					if devAction.props["disconnect"] !="": time.sleep(int(devAction.props["disconnect"]))
+					result = airfoilPlugin.executeAction("disconnect", deviceId= SPEAKERID, waitUntilDone=True)
+					
+				else: 
+					self.logger.error ("Extended speech action wants to use Airfoil but Airfoil Pro isn't enabled, aborting.")
+					return
+					
+			else:
+				if devAction.props["delay"] !="": time.sleep(int(devAction.props["delay"]))
+				indigo.server.speak(say, waitUntilDone=True)
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))
+			return False	
+				
 	################################################################################
 	# URL TOGGLE EXTENSION
 	################################################################################			
@@ -922,69 +1237,7 @@ class Plugin(indigo.PluginBase):
 			self.logger.error (ext.getException(e))	
 			return False
 			
-	#
-	# Speak to Airfoil speaker
-	#
-	def extendedSpeak (self, devAction):
-		try:
-			say = devAction.props["say"]
-			if say == "": 
-				self.logger.error ("An action was raised to speak but nothing was entered to say")
-				return
-			
-			# Check for up to 10 keywords
-			for i in range (0, 10):
-				keywords = dict([nvstring.split(":") for nvstring in [line for line in say.split("%%") if ":" in line]])
-				
-				if "v" in keywords:
-					if int(keywords["v"]) in indigo.variables:
-						say = say.replace ("%%v:" + keywords["v"] + "%%", unicode(indigo.variables[int(keywords["v"])].value) )
-					else:
-						self.logger.error ("Unable to find variable {0} to inject into speech action, ignoring".format(keywords["v"]))
-						say = say.replace ("%%v:" + keywords["v"] + "%%", "")
-					
-				# Device state
-				if "ds" in keywords:
-					devstate = keywords["ds"]
-					devstate = devstate.split("|")
-					
-					if int(devstate[0]) in indigo.devices:
-						dev = indigo.devices[int(devstate[0])]
-						if devstate[1] in dev.states:
-							say = say.replace ("%%ds:" + devstate[0] + "|" + devstate[1] + "%%", unicode(dev.states[devstate[1]]) )
-						else:
-							self.logger.error ("Unable to find state '{0}' in device '{1}' states to inject into speech action, ignoring".format(devstate[1], dev.name))
-							
-					else:
-						self.logger.error ("Unable to find device {0} to inject into speech action, ignoring".format(devstate[0]))
 
-			self.logger.info ("Extended speech is saying: {0}".format(say))
-
-			if devAction.props["useAirfoil"]:			
-				airfoilPlugin = indigo.server.getPlugin("com.perceptiveautomation.indigoplugin.airfoilpro")
-			
-				SPEAKERID = int(devAction.props["speaker"])
-
-				if airfoilPlugin.isEnabled():
-					result = airfoilPlugin.executeAction("connect", deviceId=SPEAKERID, waitUntilDone=True)
-					if devAction.props["delay"] !="": time.sleep(int(devAction.props["delay"]))
-				
-					indigo.server.speak(say, waitUntilDone=True)
-
-					if devAction.props["disconnect"] !="": time.sleep(int(devAction.props["disconnect"]))
-					result = airfoilPlugin.executeAction("disconnect", deviceId= SPEAKERID, waitUntilDone=True)
-					
-				else: 
-					self.logger.error ("Extended speech action wants to use Airfoil but Airfoil Pro isn't enabled, aborting.")
-					return
-					
-			else:
-				if devAction.props["delay"] !="": time.sleep(int(devAction.props["delay"]))
-				indigo.server.speak(say, waitUntilDone=True)
-		
-		except Exception as e:
-			self.logger.error (ext.getException(e))
-			return False
 	
 	#
 	# URL actions
@@ -1839,7 +2092,35 @@ class Plugin(indigo.PluginBase):
 			
 	################################################################################
 	# THERMOSTAT WRAPPER
-	################################################################################				
+	################################################################################	
+	
+	#
+	# Thermostat control master action (only called by actionControlThermostat custom actions)
+	#
+	def runCustomThermostatAction (self, action, dev, d, msg):
+		try:
+			# Device
+			if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
+				if int(d["option1Device"]) in indigo.devices:
+					X = 1
+					
+					return True
+					
+			if d["option1Type"] == "action" and d["option1Action"] != "":
+				if int(d["option1Action"]) in indigo.actionGroups:
+					indigo.actionGroup.execute(int(d["option1Action"]))
+				
+					return True
+					
+				else:
+					self.logger.error ("Thermostat Wrapper '{0}' is configured to use action group {1} to {3} but that action group doesn't exist in Indigo".format(dev.name, str(d["option1Action"]), msg))
+					
+					return False
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return False
 	
 	#
 	# Thermostat control action (thermostat wrapper)
@@ -1860,55 +2141,36 @@ class Plugin(indigo.PluginBase):
 			# Increase heat setpoint by actionValue
 			if action.thermostatAction == indigo.kThermostatAction.IncreaseHeatSetpoint:
 				for d in deviceSettings:
-					if d["key"] == "heatincrease":
-						# Device
-						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
-							if int(d["option1Device"]) in indigo.devices:
-								X = 1
-								
-								return True
+					if d["key"] == "increaseheat":
+						return self.runCustomThermostatAction (action, dev, d, "increase heat set point")
 								
 				if thermostatDev:
 					return indigo.thermostat.increaseHeatSetpoint(thermostatDev.id, delta=action.actionValue)
 					
 			# Decrease heat setpoint by actionValue
-			if action.thermostatAction == indigo.kThermostatAction.IncreaseHeatSetpoint:
+			if action.thermostatAction == indigo.kThermostatAction.DecreaseHeatSetpoint:
 				for d in deviceSettings:
-					if d["key"] == "heatdecrease":
-						# Device
-						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
-							if int(d["option1Device"]) in indigo.devices:
-								X = 1
-								
-								return True
+					# Device
+					if d["key"] == "decreaseheat":
+						return self.runCustomThermostatAction (action, dev, d, "decrease heat set point")
 								
 				if thermostatDev:
 					return indigo.thermostat.decreaseHeatSetpoint(thermostatDev.id, delta=action.actionValue)		
 					
 			# Increase cool setpoint by actionValue
-			if action.thermostatAction == indigo.kThermostatAction.IncreaseHeatSetpoint:
+			if action.thermostatAction == indigo.kThermostatAction.IncreaseCoolSetpoint:
 				for d in deviceSettings:
-					if d["key"] == "coolincrease":
-						# Device
-						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
-							if int(d["option1Device"]) in indigo.devices:
-								X = 1
-								
-								return True
+					if d["key"] == "increasecool":
+						return self.runCustomThermostatAction (action, dev, d, "increase cool set point")
 								
 				if thermostatDev:
 					return indigo.thermostat.increaseCoolSetpoint(thermostatDev.id, delta=action.actionValue)	
 					
 			# Decrease cool setpoint by actionValue
-			if action.thermostatAction == indigo.kThermostatAction.IncreaseHeatSetpoint:
+			if action.thermostatAction == indigo.kThermostatAction.DecreaseCoolSetpoint:
 				for d in deviceSettings:
-					if d["key"] == "cooldecrease":
-						# Device
-						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
-							if int(d["option1Device"]) in indigo.devices:
-								X = 1
-								
-								return True
+					if d["key"] == "decreasecool":
+						return self.runCustomThermostatAction (action, dev, d, "decrease cool set point")
 								
 				if thermostatDev:
 					return indigo.thermostat.decreaseCoolSetpoint(thermostatDev.id, delta=action.actionValue)				
@@ -1917,14 +2179,27 @@ class Plugin(indigo.PluginBase):
 			# Set HVAC mode
 			if action.thermostatAction == indigo.kThermostatAction.SetHvacMode:
 				for d in deviceSettings:
-					if d["key"] == "cooldecrease":
-						# Device
-						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
-							if int(d["option1Device"]) in indigo.devices:
-								X = 1
-								
-								return True
-								
+					if action.actionMode == 0 and d["key"] == "hvacmodeoff":
+						return self.runCustomThermostatAction (action, dev, d, "turn HVAC mode to off")
+						
+					if action.actionMode == 1 and d["key"] == "hvacmodeheat":
+						return self.runCustomThermostatAction (action, dev, d, "turn HVAC mode to heat")
+						
+					if action.actionMode == 2 and d["key"] == "hvacmodecool":
+						return self.runCustomThermostatAction (action, dev, d, "turn HVAC mode to cool")
+						
+					if action.actionMode == 3 and d["key"] == "hvacmodeauto":
+						return self.runCustomThermostatAction (action, dev, d, "turn HVAC mode to auto heat/cool")	
+						
+					if action.actionMode == 4 and d["key"] == "hvacmodeprogramauto":
+						return self.runCustomThermostatAction (action, dev, d, "turn HVAC mode to program auto heat/cool")	
+					
+					if action.actionMode == 5 and d["key"] == "hvacmodeprogramcool":
+						return self.runCustomThermostatAction (action, dev, d, "turn HVAC mode to program cool")
+					
+					if action.actionMode == 6 and d["key"] == "hvacmodeprogramheat":
+						return self.runCustomThermostatAction (action, dev, d, "turn HVAC mode to program heat")
+						
 				if thermostatDev:
 					if action.actionMode == 0: return indigo.thermostat.setHvacMode(thermostatDev.id, value=indigo.kHvacMode.Off)	
 					if action.actionMode == 1: return indigo.thermostat.setHvacMode(thermostatDev.id, value=indigo.kHvacMode.Heat)	
@@ -1937,13 +2212,11 @@ class Plugin(indigo.PluginBase):
 			# Set fan mode
 			if action.thermostatAction == indigo.kThermostatAction.SetFanMode:
 				for d in deviceSettings:
-					if d["key"] == "cooldecrease":
-						# Device
-						if d["option1Type"] == "device" and d["option1Device"] != "" and d["option1State"] != "":
-							if int(d["option1Device"]) in indigo.devices:
-								X = 1
-								
-								return True
+					if action.actionMode == 0 and d["key"] == "hvacfanmodeauto":
+						return self.runCustomThermostatAction (action, dev, d, "turn fan mode to auto")
+						
+					if action.actionMode == 1 and d["key"] == "hvacfanmodealways":
+						return self.runCustomThermostatAction (action, dev, d, "turn fan mode to always on")
 								
 				if thermostatDev:
 					if action.actionMode == 0: return indigo.thermostat.setFanMode(thermostatDev.id, value=indigo.kFanMode.Auto)	
@@ -2001,6 +2274,20 @@ class Plugin(indigo.PluginBase):
 						
 					states = iutil.updateState ("humidityInput1", devOption1.states[d["option1State"]], states, stateString)
 					states = iutil.updateState ("humidityInputsAll", devOption1.states[d["option1State"]], states, stateString)
+					
+				elif d["key"] == "heatsetpoint":
+					devOption1 = indigo.devices[int(d["option1Device"])]
+			
+					stateString = str(devOption1.states[d["option1State"]])
+						
+					states = iutil.updateState ("setpointHeat", devOption1.states[d["option1State"]], states, stateString)
+					
+				elif d["key"] == "coolsetpoint":
+					devOption1 = indigo.devices[int(d["option1Device"])]
+			
+					stateString = str(devOption1.states[d["option1State"]])
+						
+					states = iutil.updateState ("setpointCool", devOption1.states[d["option1State"]], states, stateString)	
 			
 			
 			parent.updateStateImageOnServer(eps.ui.getIndigoIconForKeyword(parent.pluginProps["icon"]))
@@ -2245,70 +2532,219 @@ class Plugin(indigo.PluginBase):
 	################################################################################
 	
 	#
+	# Get converted value
+	#
+	def getConvertedValue (self, props, parent, child, value, isAction=False):
+		try:
+			if props["action"] == "boolstr": return self._booleanToString (parent, child, value, isAction)
+			if props["action"] == "strtocase": return self._stringToCase (parent, child, value, isAction)
+			if props["action"] == "strtonum": return self._stringToNumber (parent, child, value, isAction)
+			if props["action"] == "dtformat": return self._dateReformat (parent, child, value, isAction)
+			if props["action"] == "string": return self._convertToString (parent, child, value, isAction)
+			if props["action"] == "ctof": return self._celsiusToFahrenheit (parent, child, value, isAction)	
+			if props["action"] == "ftoc": return self._fahrenheitToCelsius (parent, child, value, isAction)	
+			if props["action"] == "lux": return self._luxToString (parent, child, value, isAction)
+			if props["action"] == "booltype": return self._booleanToType (parent, child, value, isAction)
+			if props["action"] == "true": return self._booleanStatic (parent, child, True, isAction)
+			if props["action"] == "false": return self._booleanStatic (parent, child, False, isAction)
+			if props["action"] == "dtmin": return self._datetimeToElapsedMinutes (parent, child, value, isAction)
+			if props["action"] == "bool": return self._stateToBoolean (parent, child, value, isAction)
+				
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+	
+	#
 	# Convert celsius to fahrenheit
 	#
-	def _celsiusToFahrenheit (self, parent, child, value):
+	def _celsiusToFahrenheit (self, parent, child, value, isAction=False):
 		try:
-			self.logger.threaddebug ("Running plugin _celsiusToFahrenheit for parent '{0}' and child '{1}'".format(parent.name, child.name))
-			
-			if "precision" in parent.pluginProps:
-				value = calcs.temperature (value, False, int(parent.pluginProps["precision"]))
+			if not isAction:
+				props = parent.pluginProps
+			else:
+				props = parent.props # the devAction.props
+				
+			if "precision" in props:
+				value = calcs.temperature (value, False, int(props["precision"]))
 			else:
 				value = calcs.temperature (value, False)
 						
-			stateSuffix = u" °F" 
+			if not isAction:									
+				stateSuffix = u" °F" 
 			
-			parent.updateStateImageOnServer(indigo.kStateImageSel.TemperatureSensor)
+				parent.updateStateImageOnServer(indigo.kStateImageSel.TemperatureSensor)
 		
-			states = []
-			states = iutil.updateState ("statedisplay", value, states, str(value) + stateSuffix, 1)
-			states = iutil.updateState ("convertedValue", unicode(value), states)
-			states = iutil.updateState ("convertedNumber", value, states)
+				states = []
+				states = iutil.updateState ("statedisplay", value, states, str(value) + stateSuffix, 1)
+				states = iutil.updateState ("convertedValue", unicode(value), states)
+				states = iutil.updateState ("convertedNumber", value, states)
 		
-			parent.updateStatesOnServer(states)
+				parent.updateStatesOnServer(states)
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
-			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
+			if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
+			
+		return value # Mostly for actions
+			
 			
 	#
 	# Convert fahrenheit to celsius
 	#
-	def _fahrenheitToCelsius (self, parent, child, value):
+	def _fahrenheitToCelsius (self, parent, child, value, isAction=False):
 		try:
-			self.logger.threaddebug ("Running plugin _fahrenheitToCelsius for parent '{0}' and child '{1}'".format(parent.name, child.name))
-			
-			if "precision" in parent.pluginProps:
-				value = calcs.temperature (value, True, int(parent.pluginProps["precision"]))
+			if not isAction:
+				props = parent.pluginProps
+			else:
+				props = parent.props # the devAction.props
+		
+			if "precision" in props:
+				value = calcs.temperature (value, True, int(props["precision"]))
 			else:
 				value = calcs.temperature (value, True)
-						
-			stateSuffix = u" °C" 
 			
-			parent.updateStateImageOnServer(indigo.kStateImageSel.TemperatureSensor)
+			if not isAction:			
+				stateSuffix = u" °C" 
+			
+				parent.updateStateImageOnServer(indigo.kStateImageSel.TemperatureSensor)
 		
-			states = []
-			states = iutil.updateState ("statedisplay", value, states, str(value) + stateSuffix, 1)
-			states = iutil.updateState ("convertedValue", unicode(value), states)
-			states = iutil.updateState ("convertedNumber", value, states)
+				states = []
+				states = iutil.updateState ("statedisplay", value, states, str(value) + stateSuffix, 1)
+				states = iutil.updateState ("convertedValue", unicode(value), states)
+				states = iutil.updateState ("convertedNumber", value, states)
 		
-			parent.updateStatesOnServer(states)
+				parent.updateStatesOnServer(states)
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
-			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")		
+			if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")		
 			
+		return value # Mostly for actions
+			
+						
 	#
 	# Convert date from one format to another
 	#
-	def _dateReformat (self, parent, child, value):
+	def _dateReformat (self, parent, child, value, isAction=False):
 		try:
-			self.logger.threaddebug ("Running plugin _dateReformat for parent '{0}' and child '{1}'".format(parent.name, child.name))
-			
-			if ext.valueValid (parent.pluginProps, "inputdtformat", True) and ext.valueValid (parent.pluginProps, "outputdtformat", True):
+			if not isAction:
+				props = parent.pluginProps
+				name = parent.name
+			else:
+				props = parent.props # the devAction.props
+				name = "Conversion Action"
+				
+			if ext.valueValid (props, "inputdtformat", True) and ext.valueValid (props, "outputdtformat", True):
 				value = unicode(value)
-				value = dtutil.dateStringFormat (value, parent.pluginProps["inputdtformat"], parent.pluginProps["outputdtformat"])
+				value = dtutil.dateStringFormat (value, props["inputdtformat"], props["outputdtformat"])
 		
+				if not isAction:
+					parent.updateStateImageOnServer(indigo.kStateImageSel.None)
+			
+					states = []
+					states = iutil.updateState ("statedisplay", value, states, value)
+					states = iutil.updateState ("convertedValue", unicode(value), states)
+			
+					parent.updateStatesOnServer(states)
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))
+			if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")	
+			
+		return value # Mostly for actions
+			
+						
+	#
+	# Convert date to elapsed minutes since date
+	#
+	def _datetimeToElapsedMinutes (self, parent, child, value, isAction=False):
+		try:
+			if not isAction:
+				props = parent.pluginProps
+				name = parent.name
+			else:
+				props = parent.props # the devAction.props
+				name = "Conversion Action"
+				
+			value = unicode(value)
+			if value == "": return
+		
+			try:
+				value = datetime.datetime.strptime (value, props["dateformat"])
+			except:
+				self.logger.error (u"Error converting %s to a date/time with a format of %s, make sure the date format is correct and that the value is really a date/time string or datetime value!" % (value, props["dateformat"]))
+				if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")	
+				return
+				
+			m = dtutil.dateDiff ("minutes", indigo.server.getTime(), value)
+			m = int(m) # for state	
+			
+			value = m
+			
+			if not isAction:
+				parent.updateStateImageOnServer(indigo.kStateImageSel.TimerOn)
+	
+				states = []
+				states = iutil.updateState ("statedisplay", unicode(m).lower() + " Min", states)
+				states = iutil.updateState ("convertedValue", unicode(m).lower(), states)
+				states = iutil.updateState ("convertedNumber", m, states)
+	
+				parent.updateStatesOnServer(states)
+			
+				# If we enabled running an action on a threshold then check that now
+				if parent.pluginProps["extraaction"] != "":
+					if int(parent.pluginProps["extraaction"]) in indigo.actionGroups:
+						if parent.pluginProps["threshold"] != "":
+							if m > int(parent.pluginProps["threshold"]):
+								self.logger.info ("Threshold exceeded for '{0}', running action group".format(parent.name))
+								indigo.actionGroup.execute(int(parent.pluginProps["extraaction"]))
+						else:
+							self.logger.error ("Unable to run the action group for '{0}' because the threshold is 0 or blank".format(parent.name))
+										
+					else:
+						self.logger.error ("Unable to run the action group for '{0}' because Indigo doesn't have an action group for ID {1}".format(parent.name, parent.pluginProps["extraaction"]))
+
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")		
+					
+		return value # Mostly for actions
+								
+					
+	#
+	# Convert to a string and trim
+	#
+	def _convertToString (self, parent, child, value, isAction=False):
+		try:
+			if not isAction:
+				props = parent.pluginProps
+				name = parent.name
+			else:
+				props = parent.props # the devAction.props
+				name = "Conversion Action"
+				
+			value = unicode(value)
+			
+			if ext.valueValid (props, "maxlength", True):
+				if props["maxlength"] != "0" and len(value) > int(props["maxlength"]):
+					#self.debugLog("Shortening string to %i characters" % int(props["maxlength"]))
+					diff = len(value) - int(props["maxlength"])
+					diff = diff * -1
+					value = value[:diff]
+			
+			if ext.valueValid (props, "trimstart", True):
+				if props["trimstart"] != "0" and len(value) > int(props["trimstart"]):
+					#self.debugLog("Removing %i characters from beginning of string" % int(props["trimstart"]))
+					diff = int(props["trimstart"])
+					value = value[diff:len(value)]		
+					
+			if ext.valueValid (props, "trimend", True):
+				if props["trimend"] != "0" and len(value) > int(props["trimend"]):
+					#self.debugLog("Removing %i characters from end of string" % int(props["trimend"]))
+					diff = int(props["trimend"])
+					diff = diff * -1
+					value = value[:diff]		
+			
+			if not isAction:
 				parent.updateStateImageOnServer(indigo.kStateImageSel.None)
 			
 				states = []
@@ -2318,130 +2754,74 @@ class Plugin(indigo.PluginBase):
 				parent.updateStatesOnServer(states)
 		
 		except Exception as e:
-			self.logger.error (ext.getException(e))
-			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")	
-			
-	#
-	# Convert date to elapsed minutes since date
-	#
-	def _datetimeToElapsedMinutes (self, parent, child, value):
-		try:
-			self.logger.threaddebug ("Running plugin _datetimeToElapsedMinutes for parent '{0}' and child '{1}'".format(parent.name, child.name))
-			
-			value = unicode(value)
-			if value == "": return
-		
-			try:
-				value = datetime.datetime.strptime (value, parent.pluginProps["dateformat"])
-			except:
-				self.logger.error (u"Error converting %s to a date/time with a format of %s, make sure the date format is correct and that the value is really a date/time string or datetime value!" % (value, parent.pluginProps["dateformat"]))
-				parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")	
-				return
-			
-			m = dtutil.dateDiff ("minutes", indigo.server.getTime(), value)
-			m = int(m) # for state
-		
-			parent.updateStateImageOnServer(indigo.kStateImageSel.TimerOn)
-	
-			states = []
-			states = iutil.updateState ("statedisplay", unicode(m).lower() + " Min", states)
-			states = iutil.updateState ("convertedValue", unicode(m).lower(), states)
-			states = iutil.updateState ("convertedNumber", m, states)
-	
-			parent.updateStatesOnServer(states)
-
-		except Exception as e:
 			self.logger.error (ext.getException(e))	
-			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")		
-					
-					
-	#
-	# Convert to a string and trim
-	#
-	def _convertToString (self, parent, child, value):
-		try:
-			self.logger.threaddebug ("Running plugin _convertToString for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
 			
-			value = unicode(value)
+		return value # Mostly for actions
 			
-			if ext.valueValid (parent.pluginProps, "maxlength", True):
-				if parent.pluginProps["maxlength"] != "0" and len(value) > int(parent.pluginProps["maxlength"]):
-					self.debugLog("Shortening string to %i characters" % int(parent.pluginProps["maxlength"]))
-					diff = len(value) - int(parent.pluginProps["maxlength"])
-					diff = diff * -1
-					value = value[:diff]
-			
-			if ext.valueValid (parent.pluginProps, "trimstart", True):
-				if parent.pluginProps["trimstart"] != "0" and len(value) > int(parent.pluginProps["trimstart"]):
-					self.debugLog("Removing %i characters from beginning of string" % int(parent.pluginProps["trimstart"]))
-					diff = int(parent.pluginProps["trimstart"])
-					value = value[diff:len(value)]		
-					
-			if ext.valueValid (parent.pluginProps, "trimend", True):
-				if parent.pluginProps["trimend"] != "0" and len(value) > int(parent.pluginProps["trimend"]):
-					self.debugLog("Removing %i characters from end of string" % int(parent.pluginProps["trimend"]))
-					diff = int(parent.pluginProps["trimend"])
-					diff = diff * -1
-					value = value[:diff]		
-			
-			parent.updateStateImageOnServer(indigo.kStateImageSel.None)
-			
-			states = []
-			states = iutil.updateState ("statedisplay", value, states, value)
-			states = iutil.updateState ("convertedValue", unicode(value), states)
-			
-			parent.updateStatesOnServer(states)
-		
-		except Exception as e:
-			self.logger.error (ext.getException(e))	
-			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
-			
+						
 	#
 	# Boolean to string
 	#
-	def _booleanToString (self, parent, child, value):
+	def _booleanToString (self, parent, child, value, isAction=False):
 		try:
-			self.logger.threaddebug ("Running plugin _booleanToString for parent '{0}' and child '{1}'".format(parent.name, child.name))
-			
+			if not isAction:
+				props = parent.pluginProps
+				name = parent.name
+			else:
+				props = parent.props # the devAction.props
+				name = "Conversion Action"
+				
 			value = unicode(value).lower()
 			
-			truevalue = unicode(parent.pluginProps["truewhen"])
-			falsevalue = unicode(parent.pluginProps["falsewhen"])
-	
+			truevalue = unicode(props["truewhen"])
+			falsevalue = unicode(props["falsewhen"])
+
 			statevalue = falsevalue
 			if value == "true": statevalue = truevalue
-	
-			parent.updateStateImageOnServer(indigo.kStateImageSel.None)
+
+			value = statevalue
 			
-			states = []
-			states = iutil.updateState ("statedisplay", unicode(statevalue), states)
-			states = iutil.updateState ("convertedValue", unicode(statevalue), states)
+			if not isAction:	
+				parent.updateStateImageOnServer(indigo.kStateImageSel.None)
 			
-			parent.updateStatesOnServer(states)
+				states = []
+				states = iutil.updateState ("statedisplay", unicode(statevalue), states)
+				states = iutil.updateState ("convertedValue", unicode(statevalue), states)
+			
+				parent.updateStatesOnServer(states)
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
-			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
+			if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
 			
+		return value # Mostly for actions
+			
+						
 	#
 	# Lux value to string
 	#
-	def _luxToString (self, parent, child, value):
+	def _luxToString (self, parent, child, value, isAction=False):
 		try:
-			self.logger.threaddebug ("Running plugin _luxToString for parent '{0}' and child '{1}'".format(parent.name, child.name))
-			
+			if not isAction:
+				props = parent.pluginProps
+				name = parent.name
+			else:
+				props = parent.props # the devAction.props
+				name = "Conversion Action"
+				
 			if value is None:
 				self.logger.warn ("'{0}' cannot convert the lux value for '{1}' because the value is None".format(parent.name, child.name))
-				parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
+				if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
 				return
 			
 			value = float(value)
 			factor = 1 # 1 = 100001 or 100% of normal lux values
 			
-			if "luxfactor" in parent.pluginProps:
-				if parent.pluginProps["luxfactor"] != "0" and parent.pluginProps["luxfactor"] != "":
-					self.logger.threaddebug ("'{0}' has a lux factor of '{1}', adjusting values".format(parent.name, parent.pluginProps["luxfactor"]))
-					factor = float(parent.pluginProps["luxfactor"])
+			if "luxfactor" in props:
+				if props["luxfactor"] != "0" and props["luxfactor"] != "":
+					self.logger.threaddebug ("'{0}' has a lux factor of '{1}', adjusting values".format(name, props["luxfactor"]))
+					factor = float(props["luxfactor"])
 			
 			term = "Direct Sunlight"
 			
@@ -2455,137 +2835,171 @@ class Plugin(indigo.PluginBase):
 			if value < (51 * factor): term = "Very Dark"
 			if value < (11 * factor): term = "Pitch Black"
 			
-			if value < 1001:
-				parent.updateStateImageOnServer(indigo.kStateImageSel.LightSensor)
-			else:
-				parent.updateStateImageOnServer(indigo.kStateImageSel.LightSensorOn)
+			value = term
 			
-			states = []
-			states = iutil.updateState ("statedisplay", term, states)
-			states = iutil.updateState ("convertedValue", term, states)
+			if not isAction:			
+				if value < 1001:
+					parent.updateStateImageOnServer(indigo.kStateImageSel.LightSensor)
+				else:
+					parent.updateStateImageOnServer(indigo.kStateImageSel.LightSensorOn)
+						
 			
-			parent.updateStatesOnServer(states)
+				states = []
+				states = iutil.updateState ("statedisplay", term, states)
+				states = iutil.updateState ("convertedValue", term, states)
+			
+				parent.updateStatesOnServer(states)
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))			
-			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
+			if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
 			
+		return value # Mostly for actions
+			
+						
 	#
 	# String to case
 	#
-	def _stringToCase (self, parent, child, value):
+	def _stringToCase (self, parent, child, value, isAction=False):
 		try:
-			self.logger.threaddebug ("Running plugin _stringToCase for parent '{0}' and child '{1}'".format(parent.name, child.name))
-			
+			if not isAction:
+				props = parent.pluginProps
+				name = parent.name
+			else:
+				props = parent.props # the devAction.props
+				name = "Conversion Action"
+				
 			value = unicode(value)
 			
-			if parent.pluginProps["strcase"] == "title": value = value.title()
-			if parent.pluginProps["strcase"] == "initial": value = value.capitalize()
-			if parent.pluginProps["strcase"] == "upper": value = value.upper()
-			if parent.pluginProps["strcase"] == "lower": value = value.lower()
+			if props["strcase"] == "title": value = value.title()
+			if props["strcase"] == "initial": value = value.capitalize()
+			if props["strcase"] == "upper": value = value.upper()
+			if props["strcase"] == "lower": value = value.lower()
 			
-			parent.updateStateImageOnServer(indigo.kStateImageSel.None)
+			if not isAction:			
+				parent.updateStateImageOnServer(indigo.kStateImageSel.None)
 			
-			states = []
-			states = iutil.updateState ("statedisplay", value, states, value)
-			states = iutil.updateState ("convertedValue", unicode(value), states)
+				states = []
+				states = iutil.updateState ("statedisplay", value, states, value)
+				states = iutil.updateState ("convertedValue", unicode(value), states)
 			
-			parent.updateStatesOnServer(states)
+				parent.updateStatesOnServer(states)
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
-			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
+			if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
 			
+		return value # Mostly for actions
+			
+						
 	#
 	# String to number
 	#
-	def _stringToNumber (self, parent, child, value):
+	def _stringToNumber (self, parent, child, value, isAction=False):
 		try:
-			self.logger.threaddebug ("Running plugin _stringToNumber for parent '{0}' and child '{1}'".format(parent.name, child.name))
-			
+			if not isAction:
+				props = parent.pluginProps
+				name = parent.name
+			else:
+				props = parent.props # the devAction.props
+				name = "Conversion Action"
+				
 			value = unicode(value)
 			states = []
 			
-			if ext.valueValid (parent.pluginProps, "trimstart", True):
-				if parent.pluginProps["trimstart"] != "0" and len(value) > int(parent.pluginProps["trimstart"]):
-					self.logger.debug ("Removing %i characters from beginning of string" % int(parent.pluginProps["trimstart"]))
-					diff = int(parent.pluginProps["trimstart"])
+			if ext.valueValid (pprops, "trimstart", True):
+				if props["trimstart"] != "0" and len(value) > int(props["trimstart"]):
+					#self.logger.debug ("Removing %i characters from beginning of string" % int(parent.pluginProps["trimstart"]))
+					diff = int(props["trimstart"])
 					value = value[diff:len(value)]		
 					
-			if ext.valueValid (parent.pluginProps, "trimend", True):
-				if parent.pluginProps["trimend"] != "0" and len(value) > int(parent.pluginProps["trimend"]):
-					self.logger.debug ("Removing %i characters from end of string" % int(parent.pluginProps["trimend"]))
-					diff = int(parent.pluginProps["trimend"])
+			if ext.valueValid (props, "trimend", True):
+				if props["trimend"] != "0" and len(value) > int(props["trimend"]):
+					#self.logger.debug ("Removing %i characters from end of string" % int(parent.pluginProps["trimend"]))
+					diff = int(props["trimend"])
 					diff = diff * -1
 					value = value[:diff]		
 					
 			try:
 				dec = string.find (value, '.')
-				numtype = parent.pluginProps["numtype"]
+				numtype = props["numtype"]
 				
 				if dec > -1 and numtype == "int":
-					indigo.server.error ("Input value of %s on %s contains a decimal, forcing value to be a float.  Change the preferences for this device to get rid of this error." % (value, devEx.name))
+					indigo.server.error ("Input value of %s on %s contains a decimal, forcing value to be a float.  Change the preferences for this device to get rid of this error." % (value, name))
 					numtype = "float"
 				
 				if numtype == "int": 
 					value = int(value)
 					
-					states = iutil.updateState ("statedisplay", value, states, unicode(value))
-					states = iutil.updateState ("convertedValue", unicode(value), states)
-					states = iutil.updateState ("convertedNumber", value, states)
+					if not isAction:
+						states = iutil.updateState ("statedisplay", value, states, unicode(value))
+						states = iutil.updateState ("convertedValue", unicode(value), states)
+						states = iutil.updateState ("convertedNumber", value, states)
 					
 				if numtype == "float": 
 					value = float(value)
-					
-					states = iutil.updateState ("statedisplay", value, states, unicode(value), 2)
-					states = iutil.updateState ("convertedValue", unicode(value), states)
-					states = iutil.updateState ("convertedNumber", value, states)
+
+					if not isAction:					
+						states = iutil.updateState ("statedisplay", value, states, unicode(value), 2)
+						states = iutil.updateState ("convertedValue", unicode(value), states)
+						states = iutil.updateState ("convertedNumber", value, states)
 					
 			except Exception as e:
 				self.logger.error (ext.getException(e))	
-				parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
-			
-			parent.updateStateImageOnServer(indigo.kStateImageSel.None)
-			parent.updateStatesOnServer(states)
+				if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
+
+			if not isAction:			
+				parent.updateStateImageOnServer(indigo.kStateImageSel.None)
+				parent.updateStatesOnServer(states)
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
 			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")						
-	
+			
+		return value # Mostly for actions
+			
+				
 	#
 	# Static boolean state
 	#
-	def _booleanStatic (self, parent, child, value):
+	def _booleanStatic (self, parent, child, value, isAction=False):
 		try:
-			self.logger.threaddebug ("Running plugin _booleanStatic for parent '{0}' and child '{1}'".format(parent.name, child.name))
+			if not isAction:
+				if value:
+					parent.updateStateImageOnServer(indigo.kStateImageSel.PowerOn)
+				else:
+					parent.updateStateImageOnServer(indigo.kStateImageSel.PowerOff)
 			
-			if value:
-				parent.updateStateImageOnServer(indigo.kStateImageSel.PowerOn)
-			else:
-				parent.updateStateImageOnServer(indigo.kStateImageSel.PowerOff)
+				states = []
+				states = iutil.updateState ("statedisplay", unicode(value).lower(), states)
+				states = iutil.updateState ("convertedValue", unicode(value).lower(), states)
+				states = iutil.updateState ("convertedBoolean", value, states)
 			
-			states = []
-			states = iutil.updateState ("statedisplay", unicode(value).lower(), states)
-			states = iutil.updateState ("convertedValue", unicode(value).lower(), states)
-			states = iutil.updateState ("convertedBoolean", value, states)
-			
-			parent.updateStatesOnServer(states)
+				parent.updateStatesOnServer(states)
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
-			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
+			if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
 			
+		return value # Mostly for actions
+			
+						
 	#
 	# State to boolean
 	#
-	def _stateToBoolean (self, parent, child, value):
+	def _stateToBoolean (self, parent, child, value, isAction=False):
 		try:
-			self.logger.threaddebug ("Running plugin _stateToBoolean for parent '{0}' and child '{1}'".format(parent.name, child.name))
-			
+			if not isAction:
+				props = parent.pluginProps
+				name = parent.name
+			else:
+				props = parent.props # the devAction.props
+				name = "Conversion Action"
+				
 			value = unicode(value).lower()
 			
-			truevalue = unicode(parent.pluginProps["truewhen"]).lower()
-			falsevalue = unicode(parent.pluginProps["falsewhen"]).lower()
+			truevalue = unicode(props["truewhen"]).lower()
+			falsevalue = unicode(props["falsewhen"]).lower()
 			
 			statevalue = False
 			
@@ -2600,30 +3014,41 @@ class Plugin(indigo.PluginBase):
 					statevalue = False
 				else:
 					if truevalue == "*else*": statevalue = True
-				
-			if statevalue:
-				parent.updateStateImageOnServer(indigo.kStateImageSel.PowerOn)
-			else:
-				parent.updateStateImageOnServer(indigo.kStateImageSel.PowerOff)
 			
-			states = []
-			states = iutil.updateState ("statedisplay", unicode(statevalue).lower(), states)
-			states = iutil.updateState ("convertedValue", unicode(statevalue).lower(), states)
-			states = iutil.updateState ("convertedBoolean", statevalue, states)
+			value = statevalue
 			
-			parent.updateStatesOnServer(states)
+			if not isAction:				
+				if statevalue:
+					parent.updateStateImageOnServer(indigo.kStateImageSel.PowerOn)
+				else:
+					parent.updateStateImageOnServer(indigo.kStateImageSel.PowerOff)
+			
+				states = []
+				states = iutil.updateState ("statedisplay", unicode(statevalue).lower(), states)
+				states = iutil.updateState ("convertedValue", unicode(statevalue).lower(), states)
+				states = iutil.updateState ("convertedBoolean", statevalue, states)
+			
+				parent.updateStatesOnServer(states)
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
-			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
-	
+			if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
+			
+		return value # Mostly for actions
+			
+				
 	#
 	# Boolean to boolean type
 	#
-	def _booleanToType (self, parent, child, value):
+	def _booleanToType (self, parent, child, value, isAction=False):
 		try:
-			self.logger.threaddebug ("Running plugin _booleanToType for parent '{0}' and child '{1}'".format(parent.name, child.name))
-			
+			if not isAction:
+				props = parent.pluginProps
+				name = parent.name
+			else:
+				props = parent.props # the devAction.props
+				name = "Conversion Action"
+				
 			value = unicode(value).lower()
 			
 			statevalue = "na"
@@ -2632,71 +3057,78 @@ class Plugin(indigo.PluginBase):
 			truevalue = "na"
 			falsevalue = "na"
 			
-			if parent.pluginProps["booltype"] == "tf":
+			if props["booltype"] == "tf":
 					truevalue = "true"
 					falsevalue = "false"
 					
-			elif parent.pluginProps["booltype"] == "yesno":
+			elif props["booltype"] == "yesno":
 					truevalue = "yes"
 					falsevalue = "no"
 					
-			elif parent.pluginProps["booltype"] == "onoff":
+			elif props["booltype"] == "onoff":
 					truevalue = "on"
 					falsevalue = "off"
 					
-			elif parent.pluginProps["booltype"] == "oz":
+			elif props["booltype"] == "oz":
 					truevalue = "1"
 					falsevalue = "0"
 					
-			elif parent.pluginProps["booltype"] == "oc":
+			elif props["booltype"] == "oc":
 					truevalue = "open"
 					falsevalue = "closed"
 					
-			elif parent.pluginProps["booltype"] == "rdy":
+			elif props["booltype"] == "rdy":
 					truevalue = "ready"
 					falsevalue = "not ready"
 					
-			elif parent.pluginProps["booltype"] == "avail":
+			elif props["booltype"] == "avail":
 					truevalue = "available"
 					falsevalue = "not available"
 					
-			elif parent.pluginProps["booltype"] == "gbad":
+			elif props["booltype"] == "gbad":
 					truevalue = "good"
 					falsevalue = "bad"	
 					
-			elif parent.pluginProps["booltype"] == "lock":
+			elif props["booltype"] == "lock":
 					truevalue = "locked"
 					falsevalue = "unlocked"		
 					
 			if value == "true":
 				statebool = True
-				if parent.pluginProps["reverse"]: statebool = False
+				if props["reverse"]: statebool = False
 			else:
 				statebool = False
-				if parent.pluginProps["reverse"]: statebool = True
+				if props["reverse"]: statebool = True
 			
 			if statebool: 
 				statevalue = truevalue
 			else:
 				statevalue = falsevalue
 				
-			if statebool:
-				parent.updateStateImageOnServer(indigo.kStateImageSel.PowerOn)
-			else:
-				parent.updateStateImageOnServer(indigo.kStateImageSel.PowerOff)
+			value = statevalue
 			
-			states = []
-			states = iutil.updateState ("statedisplay", unicode(statevalue).lower(), states)
-			states = iutil.updateState ("convertedValue", unicode(statevalue).lower(), states)
-			states = iutil.updateState ("convertedBoolean", statebool, states)
-			if parent.pluginProps["booltype"] == "oz": states = iutil.updateState ("convertedNumber", int(statevalue), states)
+			if not isAction:
+				
+				if statebool:
+					parent.updateStateImageOnServer(indigo.kStateImageSel.PowerOn)
+				else:
+					parent.updateStateImageOnServer(indigo.kStateImageSel.PowerOff)
 			
-			parent.updateStatesOnServer(states)
+				states = []
+				states = iutil.updateState ("statedisplay", unicode(statevalue).lower(), states)
+				states = iutil.updateState ("convertedValue", unicode(statevalue).lower(), states)
+				states = iutil.updateState ("convertedBoolean", statebool, states)
+				if parent.pluginProps["booltype"] == "oz": states = iutil.updateState ("convertedNumber", int(statevalue), states)
+			
+				parent.updateStatesOnServer(states)
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
-			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
-	
+			if not isAction: parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")
+			
+		return value # Mostly for actions
+			
+				
 	################################################################################
 	# INDIGO COMMAND HAND-OFFS
 	#

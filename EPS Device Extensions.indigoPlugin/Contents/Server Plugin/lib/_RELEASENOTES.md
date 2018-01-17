@@ -7,6 +7,14 @@ Version 2.4.4
 * Added new custom list generator keyword "stateicons" to retrieve a list of current Indigo device state icons
 * Added ui.getIndigoIconForKeyword to resolve keywords from the new custom list function _getStateIconsList so that the keyword resolves to an Indigo icon
 * Added Homebridge Buddy API library for other plugins to call on and access the HBB functions
+* Added device events for non plugin devices (supporting API) to call the plugin: nonpluginDeviceBegun, nonpluginDeviceCreated, nonpluginDeviceUpdated, nonpluginDeviceDeleted
+* Disabled built-in update checker to ensure it is no longer doing it's own checks
+* Added color and brightness callbacks for plug.actionControlDimmerRelay
+* Added condition for setting state values in plug.actionControlDimmerRelay so that a blank statename won't try to update states (in case we don't need to like with color)
+* Fixed typo in ui _getFilteredDeviceList that would not add a valid device because the variable was valide
+* Added proptrue and propfalse to ui _getFilteredDeviceList to allow device filters by property boolean
+* Data dump and comp data dump now show plugin preferences
+* Fixed bug in ui _getValuesForDevice to check that the srcfield was blank to then return the default ret rather than continue processing and error out
 
 Version 2.4.3
 ---------------

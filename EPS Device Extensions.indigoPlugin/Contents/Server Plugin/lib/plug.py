@@ -1244,7 +1244,7 @@ class plug:
 	# Check for updates
 	def pluginMenuCheckUpdates (self):
 		try:
-			# Rendered obsolete by the Indigo Plugin Store
+			# Rendered obsolete by the Indigo Plugin Store November 2017
 			return
 			
 			self.factory.update.check (True)			

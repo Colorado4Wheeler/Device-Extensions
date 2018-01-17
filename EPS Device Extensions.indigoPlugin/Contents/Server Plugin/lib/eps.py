@@ -10,7 +10,7 @@ import sys
 import ext
 
 from plug import plug
-from update import update
+#from update import update # Obsolete by Plugin Store November 2017
 from ui import ui
 from support import support
 
@@ -57,7 +57,7 @@ class eps:
 		try:
 			# Initialize the main plugin engine
 			self.plug = plug (self)
-			self.update = update (self)
+			#self.update = update (self) # Obsolete by Plugin Store November 2017
 			self.ui = ui (self)
 			self.support = support (self)
 		

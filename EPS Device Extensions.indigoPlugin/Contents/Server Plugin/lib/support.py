@@ -58,8 +58,9 @@ class support:
 		try:
 			ret = self.pluginMenuSupportInfo (True)
 			
-			ret += self._getCacheDump ()
-			
+			ret += self._getPluginPrefs()
+
+			ret += self._getCacheDump ()			
 			
 			ret += self._getLocalDevices () # Always last so it shows at the bottom
 			
@@ -78,6 +79,8 @@ class support:
 		try:
 			ret = self.pluginMenuSupportInfo (True)
 			
+			ret += self._getPluginPrefs()
+			
 			ret += self._getLocalDevices ()
 			
 			ret += self.factory.ui.debugLine (" ")
@@ -87,6 +90,24 @@ class support:
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
+
+
+	#
+	# Add plugin preferences to dump
+	#
+	def _getPluginPrefs (self):
+		try:
+			ret = self.factory.ui.debugHeaderEx ("=")
+			ret += self.factory.ui.debugLine ("PLUGIN PREFERENCES", "=")
+			ret += self.factory.ui.debugHeaderEx ("=")
+			
+			for prop, value in self.factory.plugin.pluginPrefs.iteritems():
+				ret += self.factory.ui.debugLine (prop + " = " + unicode(value), "=")
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return ret
 
 
 	#

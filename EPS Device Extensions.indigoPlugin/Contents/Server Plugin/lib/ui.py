@@ -1217,7 +1217,8 @@ class ui:
 		if valuesDict is None or len(valuesDict) == 0: return ret
 		
 		try:		
-			if ext.valueValid (args, "srcfield", True) == False: return ret		
+			if ext.valueValid (args, "srcfield", True) == False: return ret	
+			if valuesDict[args["srcfield"]] == "": return ret
 			
 			if int(valuesDict[args["srcfield"]]) not in indigo.devices:
 				self.logger.error ("Referencing device ID {0} but that device is no longer an Indigo device.  Please change the device reference or remove this plugin device to prevent this error".format(valuesDict[args["srcfield"]]))

@@ -1,161 +1,7 @@
 <?xml version="1.0"?>
 
 <Devices>
-	<!-- =========== WEATHER EXTENSION =========== -->
-	<Device type="custom" id="epsdews">
-		<SupportURL>https://github.com/Colorado4Wheeler/Device-Extensions/wiki/Extension:-Weather</SupportURL>
-		<Name>Weather Extension</Name>
-		<ConfigUI>
-			<Field id="device" type="menu">
-				<Label>Weather Device:</Label>
-				<List class="indigo.devices" />
-				<CallbackMethod>formFieldChanged</CallbackMethod>
-			</Field>
-			
-			<Field type="menu" id="measurement" defaultValue="F" >
-				<Label>Show temps in:</Label>
-				<List>
-					<Option value="F">Fahrenheit</Option>
-					<Option value="C">Celsius</Option>
-				</List>
-			</Field>
-			
-			<Field type="menu" id="statedisplay" defaultValue="currenttemp" >
-				<Label>For device state show:</Label>
-				<List>
-					<Option value="currenttemp">Current Temperature</Option>
-					<Option value="currenthumidity">Current Humidity</Option>
-					<Option value="highttemp">High Temperature</Option>
-					<Option value="lowtemp">Low Temperature</Option>
-					<Option value="highhumidity">High Humidity</Option>
-					<Option value="lowhumidity">Low Humidity</Option>
-				</List>
-			</Field>
-			
-			<Field id="sep_general" type="separator" />
-			
-			<Field type="menu" id="temperature" defaultValue="temperature_F" >
-				<Label>State for temperature:</Label>
-				<List class="self" filter="#devicestates#[index=temperature, srcfield=device, allowui=false]" method="getCustomList" dynamicReload="true"/>
-			</Field>
-			
-			<Field type="menu" id="humidity" defaultValue="humidity" >
-				<Label>State for humidity:</Label>
-				<List class="self" filter="#devicestates#[index=humidity, srcfield=device, allowui=false]" method="getCustomList" dynamicReload="true"/>
-			</Field>
-			
-			<Field type="menu" id="rain" defaultValue="weather" >
-				<Label>State indicating rain:</Label>
-				<List class="self" filter="#devicestates#[index=rain, srcfield=device, allowui=false]" method="getCustomList" dynamicReload="true"/>
-			</Field>
-			
-			<Field type="menu" id="rainstatetype" defaultValue="string">
-				<Label>Rain state type:</Label>
-				<List>
-					<Option value="string">String / Number</Option>
-					<Option value="boolean">Boolean</Option>
-				</List>
-			</Field>
-			
-			<Field id="rainvalue" type="textfield" defaultValue="Rain" >
-				<Label>Value to indicate rain:</Label>
-			</Field>
-			
-			<Field id="sep_states" type="separator" />
-			
-			<Field id="label" type="label">
-				<Label>The following states will be available for your weather device:
-				
-Daily high temp
-Daily low temp
-Daily high humidity
-Daily low humidity
-Is raining (yes/no)
-				</Label>
-			</Field>
-		</ConfigUI>
-		
-		<States>
-			<State id="statedisplay">
-				<ValueType>String</ValueType>
-				<TriggerLabel>Current device state</TriggerLabel>
-				<ControlPageLabel>Current device state</ControlPageLabel>
-			</State>
-			
-			<State id="sep1">
-				<ValueType>Separator</ValueType>
-			</State>
-			
-			<State id="raining">
-				<ValueType>Boolean</ValueType>
-				<TriggerLabel>Raining</TriggerLabel>
-				<ControlPageLabel>Raining</ControlPageLabel>
-			</State>
-			
-			<State id="rainpending">
-				<ValueType>Boolean</ValueType>
-				<TriggerLabel>Rain probable (implementation TBD)</TriggerLabel>
-				<ControlPageLabel>Rain probable (implementation TBD)</ControlPageLabel>
-			</State>
-			
-			<State id="isrecordhigh">
-				<ValueType>Boolean</ValueType>
-				<TriggerLabel>Todays high temperature was higher than the record high</TriggerLabel>
-				<ControlPageLabel>Todays high temperature was higher than the record high</ControlPageLabel>
-			</State>
-			
-			<State id="isrecordlow">
-				<ValueType>Boolean</ValueType>
-				<TriggerLabel>Todays low temperature was lower than the record lower</TriggerLabel>
-				<ControlPageLabel>Todays low temperature was lower than the record low</ControlPageLabel>
-			</State>
-			
-			<State id="sep2">
-				<ValueType>Separator</ValueType>
-			</State>
-			
-			<State id="hightemp">
-				<ValueType>String</ValueType>
-				<TriggerLabel>Daily high temperature</TriggerLabel>
-				<ControlPageLabel>Daily high temperature</ControlPageLabel>
-			</State>
-			
-			<State id="lowtemp">
-				<ValueType>String</ValueType>
-				<TriggerLabel>Daily low temperature</TriggerLabel>
-				<ControlPageLabel>Daily low temperature</ControlPageLabel>
-			</State>
-			
-			<State id="sep3">
-				<ValueType>Separator</ValueType>
-			</State>
-			
-			<State id="highhumidity">
-				<ValueType>String</ValueType>
-				<TriggerLabel>Daily high humidity</TriggerLabel>
-				<ControlPageLabel>Daily high humidity</ControlPageLabel>
-			</State>
-			
-			<State id="lowhumidity">
-				<ValueType>String</ValueType>
-				<TriggerLabel>Daily low humidity</TriggerLabel>
-				<ControlPageLabel>Daily low humidity</ControlPageLabel>
-			</State>
-			
-			<State id="sep4">
-				<ValueType>Separator</ValueType>
-			</State>
-			
-			<State id="lasthighlowreset">
-				<ValueType>String</ValueType>
-				<TriggerLabel>Last time high and low values were reset</TriggerLabel>
-				<ControlPageLabel>Last time high and low values were reset</ControlPageLabel>
-			</State>
-			
-		</States>
-		<UiDisplayStateId>statedisplay</UiDisplayStateId>
-	</Device>
-	
+
 	<!-- =========== HUE GROUP =========== -->
 	<Device type="dimmer" id="hue-color-group">
 		<Name>Virtual Color/Ambiant Hue Device Group</Name>
@@ -338,181 +184,198 @@ Is raining (yes/no)
 		<UiDisplayStateId>statedisplay</UiDisplayStateId>
 		
 	</Device>
-	
-	<!-- =========== THERMOSTAT WRAPPER =========== -->
-	<Device type="thermostat" id="thermostat-wrapper">
-		<Name>Thermostat Wrapper</Name>
+
+	<!-- =========== CONVERSION EXTENSION =========== -->
+	<Device type="custom" id="epsdecon">
+		<Name>Conversion Extension</Name>
 		<ConfigUI>
-			<!-- Start Homebridge Buddy Integration Block -->		
-			<Field type="checkbox" id="hbbIntegrated" defaultValue="false" hidden="false">
-				<Label>Enable for HomeKit</Label>
-				<Description>Integrate this device into Homebridge Buddy</Description>
-				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
-			</Field>
-		
-			<Field type="menu" id="hbbServer" defaultValue="1953136859" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
-				<Label>Homebridge server:</Label>
-				<List class="self" filter="" method="hbbIntegrationServerList" dynamicReload="true"/>
-				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
-			</Field>
-			
-			<Field type="menu" id="hbbTreatAs" defaultValue="none" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
-				<Label>Homebridge device type:</Label>
-				<List class="self" filter="" method="hbbIntegrationTreatAsList" dynamicReload="true"/>
-				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
-			</Field>
-			
-			<!-- not yet implemented in API but here for future proofing -->	
-			<Field type="textfield" id="hbbAlias" defaultValue="" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" hidden="true">
-				<Label>Alias Name:</Label>
-			</Field>
-			
-			<Field type="separator" id="sep_hbbConnector" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"/>
-			<!-- End Homebridge Buddy Integration Block -->
-			
-			<!-- Stock thermostat fields that Indigo will look for -->
-			<Field type="menu" id="NumTemperatureInputs" defaultValue="1" hidden="true">
-				<Label>Number of temperature sensors:</Label>
-				<List>
-					<Option value="0">None</Option>
-					<Option value="1">1</Option>
-					<Option value="2">2</Option>
-					<Option value="3">3</Option>
-				</List>
-			</Field>
-			<Field type="menu" id="NumHumidityInputs" defaultValue="0" hidden="true">
-				<Label>Number of humidity sensors:</Label>
-				<List>
-					<Option value="0">None</Option>
-					<Option value="1">1</Option>
-					<Option value="2">2</Option>
-					<Option value="3">3</Option>
-				</List>
-			</Field>
-			<Field type="checkbox" id="SupportsHeatSetpoint" defaultValue="false" hidden="true">
-				<Label>Supports heat setpoint:</Label>
-				<Description>Show heat setpoint controls in UI</Description>
-			</Field>
-			<Field type="checkbox" id="SupportsCoolSetpoint" defaultValue="false" hidden="true">
-				<Label>Supports cool setpoint:</Label>
-				<Description>Show cool setpoint controls in UI</Description>
-			</Field>
-			<Field type="checkbox" id="SupportsHvacOperationMode" defaultValue="false" hidden="true">
-				<Label>Supports thermostat modes:</Label>
-				<Description>Show thermostat mode controls (heat/cool/auto) in UI</Description>
-			</Field>
-			<Field type="checkbox" id="SupportsHvacFanMode" defaultValue="false" hidden="true">
-				<Label>Supports fan modes:</Label>
-				<Description>Show fan mode controls (auto/always on) in UI</Description>
-			</Field>
-			<Field type="checkbox" id="ShowCoolHeatEquipmentStateUI" hidden="true">
-				<Label>Supports compressor/furnace feedback:</Label>
-				<Description>Show compressor/furnace states in UI</Description>
-			</Field>
-			
-			<!-- End of stock fields -->
-			
-			<!-- Hidden field indicating which option values are being displayed so we can clear them as needed in code -->
-			<Field id="loadedoption" type="textfield" defaultValue="" hidden="true">
-				<Label>Displaying values for:</Label>
-			</Field>
-			
-			<Field type="menu" id="optionSelect" defaultValue="temp" alwaysUseInDialogHeightCalc="true">
-				<Label>Select configuration option:</Label>
-				<List>
-					<Option value="thermostat">Wrap a Thermostat</Option>
-					<Option value="temp">Temperature Value</Option>
-					<Option value="humidity">Humidity Value</Option>
-					<Option value="heatsetpoint">Heat Set Point Value</Option>
-					<Option value="coolsetpoint">Cool Set Point Value</Option>
-				</List>
-				<CallbackMethod>formFieldChanged</CallbackMethod>
-			</Field>
-			
-			<Field type="menu" id="temperatureType" defaultValue="F" visibleBindingId="optionSelect" visibleBindingValue="temp,heatsetpoint,coolsetpoint" alwaysUseInDialogHeightCalc="true">
-				<Label>Display temperature as:</Label>
-				<List>
-					<Option value="F">Fahrenheit</Option>
-					<Option value="C">Celsius</Option>
-				</List>
-				<CallbackMethod>formFieldChanged</CallbackMethod>
-			</Field>
-			
-			<Field type="label" id="lbl_thermostat_device" visibleBindingId="optionSelect" visibleBindingValue="thermostat" alwaysUseInDialogHeightCalc="true">
-				<Label>
-			   Selecting another thermostat here indicates that you want
-			   all features and functions of this device to mirror that one
-			   unless specifically indicated otherwise.
-		</Label>
-			</Field>
-			
-			<Field type="menu" id="thermostatdevice" defaultValue="device" visibleBindingId="optionSelect" visibleBindingValue="thermostat" >
-				<Label>Thermostat:</Label>
-				<List class="indigo.devices" filter="indigo.thermostat"/>
-				<CallbackMethod>formFieldChanged</CallbackMethod>
-			</Field>
-			
-			<Field type="menu" id="option1Type" defaultValue="device" visibleBindingId="optionSelect" visibleBindingValue="temp,humidity,heatsetpoint,coolsetpoint" alwaysUseInDialogHeightCalc="true">
-				<Label>Object:</Label>
+			<Field type="menu" id="objectype" defaultValue="device" hidden="false">
+				<Label>Object to convert:</Label>
 				<List>
 					<Option value="device">Device</Option>
+					<Option value="variable">Variable</Option>
+					<Option value="static">Static Value</Option>
 				</List>
-				<CallbackMethod>formFieldChanged</CallbackMethod>
 			</Field>
 			
-			<Field type="label" id="lbl_temperature_device" visibleBindingId="option1Type" visibleBindingValue="device" >
-				<Label>
-				   Select the device property that will be shown as the 
-				   value.  This property must always have a number value.
-		</Label>
+			<!-- =========== Keep here until 2.2.0+ =========== -->
+			<Field type="checkbox" id="chdevice" defaultValue="true" hidden="true">
+				<Label>Use device:</Label>
+				<Description>Use device when checked, variable when unchecked</Description>
 			</Field>
 			
-			<Field type="menu" id="option1Device" visibleBindingId="option1Type" visibleBindingValue="device" alwaysUseInDialogHeightCalc="true">
+			<Field id="device" type="menu" visibleBindingId="objectype" visibleBindingValue="device">
 				<Label>Device:</Label>
 				<List class="indigo.devices" />
 				<CallbackMethod>formFieldChanged</CallbackMethod>
 			</Field>
 			
-			<Field type="menu" id="option1State" defaultValue="on" visibleBindingId="option1Type" visibleBindingValue="device" alwaysUseInDialogHeightCalc="true">
-				<Label>State:</Label>
-				<List class="self" filter="#devicestates#[index=option1State, srcfield=option1Device, allowui=True]" method="getCustomList" dynamicReload="true"/>
-				<CallbackMethod>formFieldChanged</CallbackMethod>
-			</Field>
-			
-			<Field type="menu" id="option1Action" visibleBindingId="option1Type" visibleBindingValue="action">
-				<Label>Action group:</Label>
-				<List class="indigo.actionGroups" />
-				<CallbackMethod>formFieldChanged</CallbackMethod>
-			</Field>
-			
-			<Field type="menu" id="option1Variable" visibleBindingId="option1Type" visibleBindingValue="variable">
+			<Field id="variable" type="menu" visibleBindingId="objectype" visibleBindingValue="variable">
 				<Label>Variable:</Label>
 				<List class="indigo.variables" />
+			</Field>
+			
+			<Field type="menu" id="states" defaultValue="4" visibleBindingId="objectype" visibleBindingValue="device" alwaysUseInDialogHeightCalc="true">
+				<Label>State or property to convert:</Label>
+				<List class="self" filter="#devicestatesvalues#[index=states, srcfield=device, allowui=True]" method="getCustomList" dynamicReload="true"/>
+			</Field>
+			
+			<Field type="menu" id="action" defaultValue="bool" visibleBindingId="objectype" visibleBindingValue="device,variable,static" alwaysUseInDialogHeightCalc="true">
+				<Label>Conversion action:</Label>
+				<List>
+					<Option value="ftoc">Convert Fahrenheit to Celsius</Option>
+					<Option value="ctof">Convert Celsius to Fahrenheit</Option>
+					<Option value="lux">Convert Lux to Word State</Option>
+					<Option value="bool">Convert State to Boolean</Option>
+					<Option value="dtmin">Convert Date/Time to Elapsed Minutes</Option>
+					<Option value="boolstr">Convert Boolean to String</Option>
+					<Option value="booltype">Convert to Boolean Type</Option>
+					<Option value="true">Always True</Option>
+					<Option value="false">Always False</Option>
+					<Option value="string">Convert to String (and optionally trim)</Option>
+					<Option value="dtformat">Convert Date/Time Format</Option>
+					<Option value="strtonum">Convert String to Number</Option>
+					<Option value="strtocase">Convert String to Cased String</Option>
+				</List>
 				<CallbackMethod>formFieldChanged</CallbackMethod>
 			</Field>
 			
-			<Field type="label" id="lbl_button_whitespace" >
-				<Label>
-				   
-		</Label>
+			<Field type="menu" id="strcase" defaultValue="initial" visibleBindingId="action" visibleBindingValue="strtocase" alwaysUseInDialogHeightCalc="true">
+				<Label>Convert to:</Label>
+				<List>
+					<Option value="initial">Initial Case</Option>
+					<Option value="title">Title Case</Option>
+					<Option value="upper">All Caps</Option>
+					<Option value="lower">All Lower</Option>
+				</List>
 			</Field>
 			
-			<Field type="button" id="clear"  >
+			<Field type="menu" id="numtype" defaultValue="int" visibleBindingId="action" visibleBindingValue="strtonum" >
+				<Label>Convert to:</Label>
+				<List>
+					<Option value="int">Integer (whole number)</Option>
+					<Option value="float">Float (include decimal)</Option>
+				</List>
+			</Field>
+			
+			<Field id="luxfactor" type="textfield" defaultValue="1" visibleBindingId="action" visibleBindingValue="lux" tooltip="Lux normally rates up to 100,001 but if your device detects to a lesser amount then enter that amount as a decimal.  For example, Fibaro motion sensors only detect up to 32,767 so you would enter .32767 here.  If you don't know then leave it as 1.">
+				<Label>Adjustment:</Label>
+			</Field>
+			
+			<Field id="inputdtformat" type="textfield" defaultValue="%Y-%m-%d %H:%M:%S" visibleBindingId="action" visibleBindingValue="dtformat">
+				<Label>Input format:</Label>
+			</Field>
+			
+			<Field id="outputdtformat" type="textfield" defaultValue="%Y-%m-%d %r" visibleBindingId="action" visibleBindingValue="dtformat">
+				<Label>Output format:</Label>
+			</Field>
+			
+			<Field id="maxlength" type="textfield" defaultValue="0" visibleBindingId="action" visibleBindingValue="string" alwaysUseInDialogHeightCalc="true">
+				<Label>Max string length:</Label>
+			</Field>
+			
+			<Field id="trimstart" type="textfield" defaultValue="0" visibleBindingId="action" visibleBindingValue="string,strtonum" alwaysUseInDialogHeightCalc="true">
+				<Label>Remove beginning characters:</Label>
+			</Field>
+			
+			<Field id="trimend" type="textfield" defaultValue="0" visibleBindingId="action" visibleBindingValue="string,strtonum" alwaysUseInDialogHeightCalc="true">
+				<Label>Remove end characters:</Label>
+			</Field>
+			
+			<Field type="menu" id="booltype" defaultValue="tf" visibleBindingId="action" visibleBindingValue="booltype" >
+				<Label>Convert to:</Label>
+				<List>
+					<Option value="tf">True/False</Option>
+					<Option value="yesno">Yes/No</Option>
+					<Option value="onoff">On/Off</Option>
+					<Option value="oz">1/0</Option>
+					<Option value="oc">Open/Closed</Option>
+					<Option value="lock">Locked/Unlocked</Option>
+					<Option value="rdy">Ready/Not Ready</Option>
+					<Option value="avail">Available/Unavailable</Option>
+					<Option value="gbad">Good/Bad</Option>
+				</List>
+			</Field>
+			
+			<Field id="reverse" type="checkbox" defaultValue="false" visibleBindingId="action" visibleBindingValue="booltype">
+				<Label> </Label>
+				<Description>Reverse true/false values</Description>
+			</Field>
+			
+			<Field id="dateformat" type="textfield" defaultValue="%Y-%m-%d %H:%M:%S" visibleBindingId="action" visibleBindingValue="dtmin">
+				<Label>Date/Time Python Format:</Label>
+			</Field>
+			
+			<Field id="lbl_extraaction" type="label" visibleBindingId="action" visibleBindingValue="dtmin" >
+				<Label>
+						      You can opt to run an action group if elapsed
+						      minutes exceeds a threshold by selecting an
+						      action below and a threshold of when to run it</Label>
+			</Field>
+			
+			<Field id="extraaction" type="menu" visibleBindingId="action" visibleBindingValue="dtmin">
+				<Label>Action:</Label>
+				<List class="indigo.actionGroups" />
+			</Field>
+			
+			<Field id="threshold" type="textfield" defaultValue="60" visibleBindingId="action" visibleBindingValue="dtmin">
+				<Label>Threshold in minutes:</Label>
+			</Field>
+			
+			<Field type="button" id="clear" visibleBindingId="action" visibleBindingValue="dtmin" >
 				<Label> 
 				</Label>
-				<Title>Clear Option Settings </Title>
-				<CallbackMethod>btnClearThermostatOption</CallbackMethod>
+				<Title>Clear </Title>
+				<CallbackMethod>btnClearConversionSettings</CallbackMethod>
+			</Field>
+		
+			<Field id="precision" type="textfield" defaultValue="1" visibleBindingId="action" visibleBindingValue="ctof,ftoc">
+				<Label>Decimal precision:</Label>
 			</Field>
 			
-			<Field type="separator" id="sep_devicedef" />
-			
-			<Field type="menu" id="icon" defaultValue="Auto" >
-				<Label>Icon when idle:</Label>
-				<List class="self" filter="#stateicons#[index=icon, excludeself=true]" method="getCustomList" dynamicReload="true"/>
-				<CallbackMethod>formFieldChanged</CallbackMethod>
+			<Field id="lbl_action" type="label" visibleBindingId="action" visibleBindingValue="bool" alwaysUseInDialogHeightCalc="true">
+				<Label>
+						      When converting to boolean BOTH 
+						      'Converted value of device as string' AND 
+						      'Converted value of device as boolean' will
+						      show as either True or False.</Label>
 			</Field>
 			
+			<Field id="lbl_space" type="label" >
+				<Label>
+				</Label>
+			</Field>
 			
+			<Field id="sep_action" type="separator" visibleBindingId="action" visibleBindingValue="bool,boolstr,strbool" alwaysUseInDialogHeightCalc="true"/>
+			
+			<Field id="lbl_conditions" type="label" visibleBindingId="action" visibleBindingValue="bool" alwaysUseInDialogHeightCalc="true">
+				<Label>You should use only ONE of the conditions below so that it equates to IF-Then-Else.  The other should be set to *ELSE*, however you can define both conditions so long as you know that if neither or both condition succeeds the state will default to False and may produce unexpected results.
+				</Label>
+			</Field>
+			
+			<Field id="truewhen" type="textfield" defaultValue="" visibleBindingId="action" visibleBindingValue="bool,boolstr,strbool" alwaysUseInDialogHeightCalc="true">
+				<Label>For True value should equal:</Label>
+			</Field>
+			
+			<Field id="falsewhen" type="textfield" defaultValue="*ELSE*" visibleBindingId="action" visibleBindingValue="bool,boolstr,strbool" alwaysUseInDialogHeightCalc="true">
+				<Label>For False value should equal:</Label>
+			</Field>
+			
+			<Field id="sep_general" type="separator" hidden="true"/>
+			
+			<Field id="label" type="label" hidden="true">
+				<Label>
+The following states will be available for your custom device:
+				
+Converted value (lower case true/false when converting state to boolean)
+Converted number (only used when converting numbers)
+Converted boolean (only used when converting state to boolean)
+
+Tip:
+If you want to swap True/False or On/Off states you can set the true value to "false" and the false value to "true".
+
+				</Label>
+			</Field>
 			
 		</ConfigUI>
 		
@@ -522,13 +385,26 @@ Is raining (yes/no)
 				<TriggerLabel>Current device state</TriggerLabel>
 				<ControlPageLabel>Current device state</ControlPageLabel>
 			</State>
-			
-			<State id="sep1">
-				<ValueType>Separator</ValueType>
+			<State id="convertedValue">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Converted value of device as string</TriggerLabel>
+				<ControlPageLabel>Converted value of device as string</ControlPageLabel>
 			</State>
+			<State id="convertedBoolean">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Converted value of device as boolean</TriggerLabel>
+				<ControlPageLabel>Converted value of device as boolean</ControlPageLabel>
+			</State>
+			<State id="convertedNumber">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Converted value of device as number</TriggerLabel>
+				<ControlPageLabel>Converted value of device as number</ControlPageLabel>
+			</State>
+			
+			
 		</States>
 		<UiDisplayStateId>statedisplay</UiDisplayStateId>
-	</Device>	
+	</Device>
 	
 	<!-- =========== THERMOSTAT EXTENSION =========== -->
 	<Device type="custom" id="epsdeth">
@@ -889,6 +765,214 @@ Reset preset auto timeout
 		<UiDisplayStateId>statedisplay</UiDisplayStateId>
 	</Device>	
 	
+	<!-- =========== WEATHER EXTENSION =========== -->
+	<Device type="custom" id="epsdews">
+		<SupportURL>https://github.com/Colorado4Wheeler/Device-Extensions/wiki/Extension:-Weather</SupportURL>
+		<Name>Weather Extension</Name>
+		<ConfigUI>
+			<Field id="device" type="menu">
+				<Label>Weather Device:</Label>
+				<List class="indigo.devices" />
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="measurement" defaultValue="F" >
+				<Label>Show temps in:</Label>
+				<List>
+					<Option value="F">Fahrenheit</Option>
+					<Option value="C">Celsius</Option>
+				</List>
+			</Field>
+			
+			<Field type="menu" id="statedisplay" defaultValue="currenttemp" >
+				<Label>For device state show:</Label>
+				<List>
+					<Option value="currenttemp">Current Temperature</Option>
+					<Option value="currenthumidity">Current Humidity</Option>
+					<Option value="highttemp">High Temperature</Option>
+					<Option value="lowtemp">Low Temperature</Option>
+					<Option value="highhumidity">High Humidity</Option>
+					<Option value="lowhumidity">Low Humidity</Option>
+				</List>
+			</Field>
+			
+			<Field id="sep_general" type="separator" />
+			
+			<Field type="menu" id="temperature" defaultValue="temperature_F" >
+				<Label>State for temperature:</Label>
+				<List class="self" filter="#devicestates#[index=temperature, srcfield=device, allowui=false]" method="getCustomList" dynamicReload="true"/>
+			</Field>
+			
+			<Field type="menu" id="humidity" defaultValue="humidity" >
+				<Label>State for humidity:</Label>
+				<List class="self" filter="#devicestates#[index=humidity, srcfield=device, allowui=false]" method="getCustomList" dynamicReload="true"/>
+			</Field>
+			
+			<Field type="menu" id="rain" defaultValue="weather" >
+				<Label>State indicating rain:</Label>
+				<List class="self" filter="#devicestates#[index=rain, srcfield=device, allowui=false]" method="getCustomList" dynamicReload="true"/>
+			</Field>
+			
+			<Field type="menu" id="rainstatetype" defaultValue="string">
+				<Label>Rain state type:</Label>
+				<List>
+					<Option value="string">String / Number</Option>
+					<Option value="boolean">Boolean</Option>
+				</List>
+			</Field>
+			
+			<Field id="rainvalue" type="textfield" defaultValue="Rain" >
+				<Label>Value to indicate rain:</Label>
+			</Field>
+			
+			<Field id="sep_states" type="separator" />
+			
+			<Field id="label" type="label">
+				<Label>The following states will be available for your weather device:
+				
+Daily high temp
+Daily low temp
+Daily high humidity
+Daily low humidity
+Is raining (yes/no)
+				</Label>
+			</Field>
+		</ConfigUI>
+		
+		<States>
+			<State id="statedisplay">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Current device state</TriggerLabel>
+				<ControlPageLabel>Current device state</ControlPageLabel>
+			</State>
+			
+			<State id="sep1">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="raining">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Raining</TriggerLabel>
+				<ControlPageLabel>Raining</ControlPageLabel>
+			</State>
+			
+			<State id="rainpending">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Rain probable (implementation TBD)</TriggerLabel>
+				<ControlPageLabel>Rain probable (implementation TBD)</ControlPageLabel>
+			</State>
+			
+			<State id="isrecordhigh">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Todays high temperature was higher than the record high</TriggerLabel>
+				<ControlPageLabel>Todays high temperature was higher than the record high</ControlPageLabel>
+			</State>
+			
+			<State id="isrecordlow">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>Todays low temperature was lower than the record lower</TriggerLabel>
+				<ControlPageLabel>Todays low temperature was lower than the record low</ControlPageLabel>
+			</State>
+			
+			<State id="sep2">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="hightemp">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Daily high temperature</TriggerLabel>
+				<ControlPageLabel>Daily high temperature</ControlPageLabel>
+			</State>
+			
+			<State id="lowtemp">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Daily low temperature</TriggerLabel>
+				<ControlPageLabel>Daily low temperature</ControlPageLabel>
+			</State>
+			
+			<State id="sep3">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="highhumidity">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Daily high humidity</TriggerLabel>
+				<ControlPageLabel>Daily high humidity</ControlPageLabel>
+			</State>
+			
+			<State id="lowhumidity">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Daily low humidity</TriggerLabel>
+				<ControlPageLabel>Daily low humidity</ControlPageLabel>
+			</State>
+			
+			<State id="sep4">
+				<ValueType>Separator</ValueType>
+			</State>
+			
+			<State id="lasthighlowreset">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Last time high and low values were reset</TriggerLabel>
+				<ControlPageLabel>Last time high and low values were reset</ControlPageLabel>
+			</State>
+			
+		</States>
+		<UiDisplayStateId>statedisplay</UiDisplayStateId>
+	</Device>
+	
+	<!-- =========== URL EXTENSION =========== -->	
+	<Device type="relay" id="epsdeurl">
+		<Name>URL Extension</Name>
+		<ConfigUI>
+			<Field id="onCommand" type="textfield" defaultValue="" >
+				<Label>Turn on URL:</Label>
+			</Field>
+			
+			<Field id="offCommand" type="textfield" defaultValue="" >
+				<Label>Turn off URL:</Label>
+			</Field>
+			
+			<Field id="toggleCommand" type="textfield" defaultValue="" >
+				<Label>Toggle on/off URL:</Label>
+			</Field>
+			
+			<Field id="sep_toggles" type="separator" />
+			
+			<Field id="url" type="textfield" defaultValue="" >
+				<Label>Optional command URL:</Label>
+			</Field>
+			
+			<Field id="sep_url" type="separator" />
+			
+			<Field id="username" type="textfield" defaultValue="" >
+				<Label>Optional User name:</Label>
+			</Field>
+			
+			<Field id="password" type="textfield" defaultValue="" secure="true">
+				<Label>Optional Password:</Label>
+			</Field>
+					
+			<Field id="sep_general" type="separator" />
+			
+			<Field id="label" type="label">
+				<Label>
+This acts as a normal On/Off device in Indigo, use it the same way you would any other switch.  This is a blind command, meaning there is no feedback so no way to know if it is on or off, leave the toggle URL blank then the plugin will alternate between the on and off commands depending on which state (on or off) the device currently is in.  If you get stuck on this you can execute the "Force Off" action to force it to an off state.
+
+				</Label>
+			</Field>
+			
+		</ConfigUI>
+		
+		<States>
+			<State id="statedisplay">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Current device state</TriggerLabel>
+				<ControlPageLabel>Current device state</ControlPageLabel>
+			</State>
+		</States>
+		<UiDisplayStateId>statedisplay</UiDisplayStateId>
+	</Device>	
+	
 	<!-- =========== IRRIGATION EXTENSION =========== -->
 	<Device type="custom" id="epsdeirr">
 		<Name>Irrigation Extension</Name>
@@ -1163,155 +1247,200 @@ Schedule is paused (true/false)
 		<UiDisplayStateId>statedisplay</UiDisplayStateId>
 	</Device>
 	
-	<!-- =========== CONVERSION EXTENSION =========== -->
-	<Device type="custom" id="epsdecon">
-		<Name>Conversion Extension</Name>
+	<!-- =========== THERMOSTAT WRAPPER =========== -->
+	<Device type="thermostat" id="thermostat-wrapper">
+		<Name>Thermostat Wrapper</Name>
 		<ConfigUI>
-			<Field type="checkbox" id="chdevice" defaultValue="true">
-				<Label>Use device:</Label>
-				<Description>Use device when checked, variable when unchecked</Description>
+			<!-- Start Homebridge Buddy Integration Block -->		
+			<Field type="checkbox" id="hbbIntegrated" defaultValue="false" hidden="false">
+				<Label>Enable for HomeKit</Label>
+				<Description>Integrate this device into Homebridge Buddy</Description>
+				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
+			</Field>
+		
+			<Field type="menu" id="hbbServer" defaultValue="1953136859" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+				<Label>Homebridge server:</Label>
+				<List class="self" filter="" method="hbbIntegrationServerList" dynamicReload="true"/>
+				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
 			</Field>
 			
-			<Field id="device" type="menu" visibleBindingId="chdevice" visibleBindingValue="true">
+			<Field type="menu" id="hbbTreatAs" defaultValue="none" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true">
+				<Label>Homebridge device type:</Label>
+				<List class="self" filter="" method="hbbIntegrationTreatAsList" dynamicReload="true"/>
+				<CallbackMethod>hbbIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<!-- not yet implemented in API but here for future proofing -->	
+			<Field type="textfield" id="hbbAlias" defaultValue="" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" hidden="true">
+				<Label>Alias Name:</Label>
+			</Field>
+			
+			<Field type="separator" id="sep_hbbConnector" visibleBindingId="hbbIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true"/>
+			<!-- End Homebridge Buddy Integration Block -->
+			
+			<!-- Stock thermostat fields that Indigo will look for -->
+			<Field type="menu" id="NumTemperatureInputs" defaultValue="1" hidden="true">
+				<Label>Number of temperature sensors:</Label>
+				<List>
+					<Option value="0">None</Option>
+					<Option value="1">1</Option>
+					<Option value="2">2</Option>
+					<Option value="3">3</Option>
+				</List>
+			</Field>
+			<Field type="menu" id="NumHumidityInputs" defaultValue="0" hidden="true">
+				<Label>Number of humidity sensors:</Label>
+				<List>
+					<Option value="0">None</Option>
+					<Option value="1">1</Option>
+					<Option value="2">2</Option>
+					<Option value="3">3</Option>
+				</List>
+			</Field>
+			<Field type="checkbox" id="SupportsHeatSetpoint" defaultValue="false" hidden="true">
+				<Label>Supports heat setpoint:</Label>
+				<Description>Show heat setpoint controls in UI</Description>
+			</Field>
+			<Field type="checkbox" id="SupportsCoolSetpoint" defaultValue="false" hidden="true">
+				<Label>Supports cool setpoint:</Label>
+				<Description>Show cool setpoint controls in UI</Description>
+			</Field>
+			<Field type="checkbox" id="SupportsHvacOperationMode" defaultValue="false" hidden="true">
+				<Label>Supports thermostat modes:</Label>
+				<Description>Show thermostat mode controls (heat/cool/auto) in UI</Description>
+			</Field>
+			<Field type="checkbox" id="SupportsHvacFanMode" defaultValue="false" hidden="true">
+				<Label>Supports fan modes:</Label>
+				<Description>Show fan mode controls (auto/always on) in UI</Description>
+			</Field>
+			<Field type="checkbox" id="ShowCoolHeatEquipmentStateUI" hidden="true">
+				<Label>Supports compressor/furnace feedback:</Label>
+				<Description>Show compressor/furnace states in UI</Description>
+			</Field>
+			
+			<!-- End of stock fields -->
+			
+			<!-- Hidden field indicating which option values are being displayed so we can clear them as needed in code -->
+			<Field id="loadedoption" type="textfield" defaultValue="" hidden="true">
+				<Label>Displaying values for:</Label>
+			</Field>
+			
+			<Field type="menu" id="optionSelect" defaultValue="temp" alwaysUseInDialogHeightCalc="true">
+				<Label>Select configuration option:</Label>
+				<List>
+					<Option value="thermostat">Wrap a Thermostat</Option>
+					<Option value="temp">Temperature Value</Option>
+					<Option value="humidity">Humidity Value</Option>
+					<Option value="heatsetpoint">Heat Set Point Value</Option>
+					<Option value="coolsetpoint">Cool Set Point Value</Option>
+					<Option value="increaseheat">Increase Heat Set Point</Option>
+					<Option value="decreaseheat">Decrease Heat Set Point</Option>
+					<Option value="increasecool">Increase Cool Set Point</Option>
+					<Option value="decreasecool">Decrease Cool Set Point</Option>
+					<Option value="hvacmodeoff">Set HVAC Mode to Off</Option>
+					<Option value="hvacmodeheat">Set HVAC Mode to Heat</Option>
+					<Option value="hvacmodecool">Set HVAC Mode to Cool</Option>
+					<Option value="hvacmodeauto">Set HVAC Mode to Auto</Option>
+					<Option value="hvacmodeprogramheat">Set HVAC Mode to Program Heat</Option>
+					<Option value="hvacmodeprogramcool">Set HVAC Mode to Program Cool</Option>
+					<Option value="hvacmodeprogramauto">Set HVAC Mode to Program Auto</Option>
+					<Option value="hvacfanmodeauto">Set HVAC Fan Mode to Auto</Option>
+					<Option value="hvacfanmodealways">Set HVAC Fan Mode to Always On</Option>
+				</List>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="temperatureType" defaultValue="F" visibleBindingId="optionSelect" visibleBindingValue="temp,heatsetpoint,coolsetpoint" alwaysUseInDialogHeightCalc="true">
+				<Label>Display temperature as:</Label>
+				<List>
+					<Option value="F">Fahrenheit</Option>
+					<Option value="C">Celsius</Option>
+				</List>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="label" id="lbl_thermostat_device" visibleBindingId="optionSelect" visibleBindingValue="thermostat" alwaysUseInDialogHeightCalc="true">
+				<Label>
+			   Selecting another thermostat here indicates that you want
+			   all features and functions of this device to mirror that one
+			   unless specifically indicated otherwise.
+		</Label>
+			</Field>
+			
+			<Field type="checkbox" id="unlockObject" defaultValue="false" hidden="true">
+				<Label> </Label>
+				<Description>Determines if object is editable or not, put here to keep things under control while in development</Description>
+			</Field>
+			
+			<Field type="menu" id="option1Type" defaultValue="device" enabledBindingId="unlockObject" alwaysUseInDialogHeightCalc="true" >
+				<Label>Object:</Label>
+				<List>
+					<Option value="thermostat">Thermostat</Option>
+					<Option value="device">Device</Option>
+					<Option value="action">Action Group</Option>
+				</List>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="label" id="lbl_temperature_device" visibleBindingId="option1Type" visibleBindingValue="device" >
+				<Label>
+				   Select the device property that will be shown as the 
+				   value.  This property must always have a number value.
+		</Label>
+			</Field>
+			
+			<Field type="menu" id="thermostatdevice" defaultValue="device" visibleBindingId="optionSelect" visibleBindingValue="thermostat" >
+				<Label>Thermostat:</Label>
+				<List class="indigo.devices" filter="indigo.thermostat"/>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="option1Device" visibleBindingId="option1Type" visibleBindingValue="device" alwaysUseInDialogHeightCalc="true">
 				<Label>Device:</Label>
 				<List class="indigo.devices" />
 				<CallbackMethod>formFieldChanged</CallbackMethod>
 			</Field>
 			
-			<Field id="variable" type="menu" visibleBindingId="chdevice" visibleBindingValue="false">
+			<Field type="menu" id="option1State" defaultValue="on" visibleBindingId="option1Type" visibleBindingValue="device" alwaysUseInDialogHeightCalc="true">
+				<Label>State:</Label>
+				<List class="self" filter="#devicestates#[index=option1State, srcfield=option1Device, allowui=True]" method="getCustomList" dynamicReload="true"/>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="option1Action" visibleBindingId="option1Type" visibleBindingValue="action">
+				<Label>Action group:</Label>
+				<List class="indigo.actionGroups" />
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="option1Variable" visibleBindingId="option1Type" visibleBindingValue="variable">
 				<Label>Variable:</Label>
 				<List class="indigo.variables" />
+				<CallbackMethod>formFieldChanged</CallbackMethod>
 			</Field>
 			
-			<Field type="menu" id="states" defaultValue="4" visibleBindingId="chdevice" visibleBindingValue="true">
-				<Label>State or property to convert:</Label>
-				<List class="self" filter="#devicestatesvalues#[index=states, srcfield=device, allowui=True]" method="getCustomList" dynamicReload="true"/>
-			</Field>
-			
-			<Field type="menu" id="action" defaultValue="bool" >
-				<Label>Conversion action:</Label>
-				<List>
-					<Option value="ftoc">Convert Fahrenheit to Celsius</Option>
-					<Option value="ctof">Convert Celsius to Fahrenheit</Option>
-					<Option value="lux">Convert Lux to Word State</Option>
-					<Option value="bool">Convert State to Boolean</Option>
-					<Option value="dtmin">Convert Date/Time to Elapsed Minutes</Option>
-					<Option value="boolstr">Convert Boolean to String</Option>
-					<Option value="booltype">Convert to Boolean Type</Option>
-					<Option value="true">Always True</Option>
-					<Option value="false">Always False</Option>
-					<Option value="string">Convert to String (and optionally trim)</Option>
-					<Option value="dtformat">Convert Date/Time Format</Option>
-					<Option value="strtonum">Convert String to Number</Option>
-					<Option value="strtocase">Convert String to Cased String</Option>
-				</List>
-			</Field>
-			
-			<Field type="menu" id="strcase" defaultValue="initial" visibleBindingId="action" visibleBindingValue="strtocase" >
-				<Label>Convert to:</Label>
-				<List>
-					<Option value="initial">Initial Case</Option>
-					<Option value="title">Title Case</Option>
-					<Option value="upper">All Caps</Option>
-					<Option value="lower">All Lower</Option>
-				</List>
-			</Field>
-			
-			<Field type="menu" id="numtype" defaultValue="int" visibleBindingId="action" visibleBindingValue="strtonum" >
-				<Label>Convert to:</Label>
-				<List>
-					<Option value="int">Integer (whole number)</Option>
-					<Option value="float">Float (include decimal)</Option>
-				</List>
-			</Field>
-			
-			<Field id="luxfactor" type="textfield" defaultValue="1" visibleBindingId="action" visibleBindingValue="lux" tooltip="Lux normally rates up to 100,001 but if your device detects to a lesser amount then enter that amount as a decimal.  For example, Fibaro motion sensors only detect up to 32,767 so you would enter .32767 here.  If you don't know then leave it as 1.">
-				<Label>Adjustment:</Label>
-			</Field>
-			
-			<Field id="inputdtformat" type="textfield" defaultValue="%Y-%m-%d %H:%M:%S" visibleBindingId="action" visibleBindingValue="dtformat">
-				<Label>Input format:</Label>
-			</Field>
-			
-			<Field id="outputdtformat" type="textfield" defaultValue="%Y-%m-%d %r" visibleBindingId="action" visibleBindingValue="dtformat">
-				<Label>Output format:</Label>
-			</Field>
-			
-			<Field id="maxlength" type="textfield" defaultValue="0" visibleBindingId="action" visibleBindingValue="string">
-				<Label>Max string length:</Label>
-			</Field>
-			
-			<Field id="trimstart" type="textfield" defaultValue="0" visibleBindingId="action" visibleBindingValue="string,strtonum">
-				<Label>Remove beginning characters:</Label>
-			</Field>
-			
-			<Field id="trimend" type="textfield" defaultValue="0" visibleBindingId="action" visibleBindingValue="string,strtonum">
-				<Label>Remove end characters:</Label>
-			</Field>
-			
-			<Field type="menu" id="booltype" defaultValue="tf" visibleBindingId="action" visibleBindingValue="booltype" >
-				<Label>Convert to:</Label>
-				<List>
-					<Option value="tf">True/False</Option>
-					<Option value="yesno">Yes/No</Option>
-					<Option value="onoff">On/Off</Option>
-					<Option value="oz">1/0</Option>
-					<Option value="oc">Open/Closed</Option>
-					<Option value="lock">Locked/Unlocked</Option>
-					<Option value="rdy">Ready/Not Ready</Option>
-					<Option value="avail">Available/Unavailable</Option>
-					<Option value="gbad">Good/Bad</Option>
-				</List>
-			</Field>
-			
-			<Field id="reverse" type="checkbox" defaultValue="false" visibleBindingId="action" visibleBindingValue="booltype">
-				<Label> </Label>
-				<Description>Reverse true/false values</Description>
-			</Field>
-			
-			<Field id="dateformat" type="textfield" defaultValue="%Y-%m-%d %H:%M:%S" visibleBindingId="action" visibleBindingValue="dtmin">
-				<Label>Date/Time Python Format:</Label>
-			</Field>
-		
-			<Field id="precision" type="textfield" defaultValue="1" visibleBindingId="action" visibleBindingValue="ctof,ftoc">
-				<Label>Decimal precision:</Label>
-			</Field>
-			
-			<Field id="lbl_action" type="label" visibleBindingId="action" visibleBindingValue="bool">
-				<Label>When converting to boolean BOTH 'Converted value of device as string' AND 'Converted value of device as boolean' will show as either True or False.
-				</Label>
-			</Field>
-			
-			<Field id="sep_action" type="separator" visibleBindingId="action" visibleBindingValue="bool,boolstr,strbool"/>
-			
-			<Field id="lbl_conditions" type="label" visibleBindingId="action" visibleBindingValue="bool">
-				<Label>You should use only ONE of the conditions below so that it equates to IF-Then-Else.  The other should be set to *ELSE*, however you can define both conditions so long as you know that if neither or both condition succeeds the state will default to False and may produce unexpected results.
-				</Label>
-			</Field>
-			
-			<Field id="truewhen" type="textfield" defaultValue="" visibleBindingId="action" visibleBindingValue="bool,boolstr,strbool">
-				<Label>For True value should equal:</Label>
-			</Field>
-			
-			<Field id="falsewhen" type="textfield" defaultValue="*ELSE*" visibleBindingId="action" visibleBindingValue="bool,boolstr,strbool">
-				<Label>For False value should equal:</Label>
-			</Field>
-			
-			<Field id="sep_general" type="separator" />
-			
-			<Field id="label" type="label">
+			<Field type="label" id="lbl_button_whitespace" >
 				<Label>
-The following states will be available for your custom device:
-				
-Converted value (lower case true/false when converting state to boolean)
-Converted number (only used when converting numbers)
-Converted boolean (only used when converting state to boolean)
-
-Tip:
-If you want to swap True/False or On/Off states you can set the true value to "false" and the false value to "true".
-
-				</Label>
+				   
+		</Label>
 			</Field>
+			
+			<Field type="button" id="clear"  >
+				<Label> 
+				</Label>
+				<Title>Clear Option Settings </Title>
+				<CallbackMethod>btnClearThermostatOption</CallbackMethod>
+			</Field>
+			
+			<Field type="separator" id="sep_devicedef" />
+			
+			<Field type="menu" id="icon" defaultValue="Auto" >
+				<Label>Icon when idle:</Label>
+				<List class="self" filter="#stateicons#[index=icon, excludeself=true]" method="getCustomList" dynamicReload="true"/>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			
 			
 		</ConfigUI>
 		
@@ -1321,77 +1450,12 @@ If you want to swap True/False or On/Off states you can set the true value to "f
 				<TriggerLabel>Current device state</TriggerLabel>
 				<ControlPageLabel>Current device state</ControlPageLabel>
 			</State>
-			<State id="convertedValue">
-				<ValueType>String</ValueType>
-				<TriggerLabel>Converted value of device as string</TriggerLabel>
-				<ControlPageLabel>Converted value of device as string</ControlPageLabel>
-			</State>
-			<State id="convertedBoolean">
-				<ValueType>String</ValueType>
-				<TriggerLabel>Converted value of device as boolean</TriggerLabel>
-				<ControlPageLabel>Converted value of device as boolean</ControlPageLabel>
-			</State>
-			<State id="convertedNumber">
-				<ValueType>Number</ValueType>
-				<TriggerLabel>Converted value of device as number</TriggerLabel>
-				<ControlPageLabel>Converted value of device as number</ControlPageLabel>
-			</State>
 			
-			
-		</States>
-		<UiDisplayStateId>statedisplay</UiDisplayStateId>
-	</Device>
-	
-	<Device type="relay" id="epsdeurl">
-		<Name>URL Extension</Name>
-		<ConfigUI>
-			<Field id="onCommand" type="textfield" defaultValue="" >
-				<Label>Turn on URL:</Label>
-			</Field>
-			
-			<Field id="offCommand" type="textfield" defaultValue="" >
-				<Label>Turn off URL:</Label>
-			</Field>
-			
-			<Field id="toggleCommand" type="textfield" defaultValue="" >
-				<Label>Toggle on/off URL:</Label>
-			</Field>
-			
-			<Field id="sep_toggles" type="separator" />
-			
-			<Field id="url" type="textfield" defaultValue="" >
-				<Label>Optional command URL:</Label>
-			</Field>
-			
-			<Field id="sep_url" type="separator" />
-			
-			<Field id="username" type="textfield" defaultValue="" >
-				<Label>Optional User name:</Label>
-			</Field>
-			
-			<Field id="password" type="textfield" defaultValue="" secure="true">
-				<Label>Optional Password:</Label>
-			</Field>
-					
-			<Field id="sep_general" type="separator" />
-			
-			<Field id="label" type="label">
-				<Label>
-This acts as a normal On/Off device in Indigo, use it the same way you would any other switch.  This is a blind command, meaning there is no feedback so no way to know if it is on or off, leave the toggle URL blank then the plugin will alternate between the on and off commands depending on which state (on or off) the device currently is in.  If you get stuck on this you can execute the "Force Off" action to force it to an off state.
-
-				</Label>
-			</Field>
-			
-		</ConfigUI>
-		
-		<States>
-			<State id="statedisplay">
-				<ValueType>String</ValueType>
-				<TriggerLabel>Current device state</TriggerLabel>
-				<ControlPageLabel>Current device state</ControlPageLabel>
+			<State id="sep1">
+				<ValueType>Separator</ValueType>
 			</State>
 		</States>
 		<UiDisplayStateId>statedisplay</UiDisplayStateId>
 	</Device>	
-	
+
 </Devices>

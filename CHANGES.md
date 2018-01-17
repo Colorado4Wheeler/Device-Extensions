@@ -1,16 +1,28 @@
 Release Notes
 ==========
 
-Version 2.0.5 (2.1.0 preview)
+Version 2.1.0 (includes releases 2.5.0 forward as they were 2.1.0 previews)
 ---------------
 
+* ALL CONVERSIONS NOW AVAILABLE AS ACTIONS AS WELL AS DEVICES!  You can also output the result to a variable, the console log or to your speakers via text to speech
 * Added new device Virtual Color/Ambiant Hue Device Group that allows you to group together Hue bulbs so you can control them in tandem, including changing colors
-* Added new device action to direct speech to a specific Airfoil speaker and then disconnect from the speaker
-* Added Heat Set Point and Cool Set Point values to the Thermostat Wrapper
+* Added new action to direct speech to a specific Airfoil speaker or the system audio and then disconnect from the speaker (if using Airfoil), with the ability to inject variables or device states dynamically into the spoken phrase
+* Added all remaining values and functions to the Thermostat Wrapper.  As of now you can only use device states for values and action groups for functions but if there is a call to do more in the future this may be added
 * Added API hooks into Homebridge Buddy
 * Added Homebridge Buddy integration into the recently created Thermostat Wrapper, thus beginning the process of migrating all Wrapper and Alias devices from Homebridge Buddy to this and other 3rd party applications instead
+* Added ability to execute an action group on Time to Elapsed Minutes conversions if the elapsed minutes exceeds the provided threshold
+* Added real-time updates for Conversion Extensions when using Convert Date/Time to Elapsed Minutes, meaning that the system will update these every 60 seconds from their source since in both of these cases the source data may not change but our status needs to.  Note that this will add a slight increase to the CPU usage, but probably not more than 0.1% to 0.3% depending on how many of these conversions you are doing
+* Added plugin configuration for device address updates so that now a Conversion Extension can show the type of conversion it is doing in the address or than the device or variable it is doing it on (all previous versions did the latter)
+* Changed the order of devices in the XML so they appear in a more logical order when selecting a device model
+* Fixed bug where conversions on variables may not work, now all variable conversions work properly
 * Changed the About URL in the plugin menu to point to the Git Wiki pages instead of the Indigo forums
 * Removed Support Data Dump, Comprehensive Data Dump and Check for Updates from the plugin menu and added the Advanced Plugin Actions in its place to clean up the menu and to remove the version checker made obsolete by the Plugin Store
+* Fixed upgrade issue where it would always indicate on plugin startup that it was upgrading from version 1.53, it will now only do that the first time and then go away
+* Cleaned up user interface for Conversion Extensions
+* Cleaned up user interface for the action menu and moved all device specific actions under devices
+* Removed Conversion Extension checkbox to indicate the conversion is for a device or variable and made it a combobox so that other conversions can be easily integrated (i.e., action groups, schedules, etc)
+* Changed logic so that if you choose Always True or Always False as a conversion method that the type will change to static and you will no longer see a device, variable or state
+* Always True and Always False conversion devices will now always have an address of Static Value of True or Static Value of False in the UI
 
 Version 2.0.4 (Interim Release)
 ---------------
@@ -79,16 +91,11 @@ Known Issues As Of The Most Current Release (Leftover from Legacy 1.x version, m
 Wish List
 ---------------
 
-* Replace "Use device when checked, variable when unchecked" (reference 'chdevice' in plugin code) with a combobox and write into device upgrade to convert all devices to use it
-* For static true/false on conversions get rid of the need to have a device and state chosen and change the updates to act accordingly since state updates are not only no longer needed but will skip this device since it has no active state or device
 * Add ability to read responses from a web device to get status on URL Extension
-* Add ability to run an action group on Elapsed Minutes Conversion Extension if the elapsed minutes surpasses a set number of minutes
 * Allow using any kind of device as an Irrigation Extension device, even if it's not an Indigo.Sprinkler
-* Actions to do on-the-fly conversions without the need to create a device
 * Add an "Average" conversion so you can take the same states of up to 5 devices and get the average value - this will know if it's one of our converted extensions and actaccordingly.  Must be a number or boolean mostly.
 * Add ability to auto-pause for X seconds then auto-resume on Irrigation Extensions, each successive press of the button will increase the pause time by X more seconds, a manual resume will clear the timer
 * Improve threading in extensions that have timers or countdowns so that the Indigo device list shows the timer in exact seconds instead of skipping around as it does because concurrentThreading is not precisely one second
-* Add placeholders so that the form size remains the same (the largest forms size is state to boolean)
 * Add conditions like operators to give much more flexibility to state to boolean so it doesn't have to equal something, it can also contain, greater than, etc
 * Presets for Irrigation Extensions
 * Option for Irrigation Extension to, when togging a zone on, use the saved duration, a new quick saved duration or the default duration
