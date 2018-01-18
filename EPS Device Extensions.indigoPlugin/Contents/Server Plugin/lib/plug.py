@@ -1,3 +1,5 @@
+# coding: utf-8
+
 # eps.plug - Mirrors definitions from Indigo API and passes them to other routines if/when needed
 #
 # Copyright (c) 2018 ColoradoFourWheeler / EPS
@@ -412,7 +414,7 @@ class plug:
 	# New non plugin device entering configuration
 	def nonpluginDeviceBegun (self, dev):
 		try:
-			self.logger.threaddebug ("Non plugin device '{0}' being created and configured".format(dev.name))
+			self.logger.threaddebug ("Non plugin device '{0}' being created and configured".format(dev.name.encode("utf-8")))
 			
 			self._callBack (BEFORE, [dev])	
 			
@@ -424,7 +426,7 @@ class plug:
 	# Non plugin device created (Custom)
 	def nonpluginDeviceCreated (self, dev):
 		try:
-			self.logger.threaddebug ("Non plugin device '{0}' created".format(dev.name))
+			self.logger.threaddebug ("Non plugin device '{0}' created".format(dev.name.encode("utf-8")))
 			
 			self._callBack (BEFORE, [dev])	
 			
@@ -436,8 +438,8 @@ class plug:
 	# Non plugin device updated (Custom)
 	def nonpluginDeviceUpdated (self, origDev, newDev):
 		try:
-			self.logger.threaddebug ("Non plugin device '{0}' has been updated".format(newDev.name))
-
+			self.logger.threaddebug ("Non plugin device '{0}' has been updated".format(newDev.name.encode("utf-8")))
+			
 			self._callBack (BEFORE, [origDev, newDev])	
 			
 			self._callBack (AFTER, [origDev, newDev])

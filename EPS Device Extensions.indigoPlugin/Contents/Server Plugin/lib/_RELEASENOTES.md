@@ -1,6 +1,11 @@
 Release Notes
 ==========
 
+Version 2.4.5
+---------------
+
+* Added utf8 encoding to the non plugin device update/create/start functions because it'll throw an error if they use a latin character (like accent characters) and then the plug will throw an error on all sorts of devices that we don't even care about
+
 Version 2.4.4
 ---------------
 
