@@ -406,6 +406,358 @@ If you want to swap True/False or On/Off states you can set the true value to "f
 		<UiDisplayStateId>statedisplay</UiDisplayStateId>
 	</Device>
 	
+	<!-- =========== FILTER DEVICE =========== -->
+	<Device type="sensor" id="Filter-Sensor">
+		<Name>Filter Sensor</Name>
+		<ConfigUI>
+			<!-- Start Indigo Voice API Integration Block -->		
+			<Field type="checkbox" id="voiceIntegrated" defaultValue="false" hidden="false">
+				<Label>Enable for voice</Label>
+				<Description>Integrate this device into voice plugins</Description>
+				<CallbackMethod>voiceIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<!-- Future use when more than just HKB is available under this API -->
+			<Field type="menu" id="voiceIntegration" defaultValue="ALL" visibleBindingId="voiceIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" hidden="true">
+				<Label>Integration:</Label>
+				<List class="self" filter="" method="voiceIntegrationPluginList" dynamicReload="true"/>
+				<CallbackMethod>voiceIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<Field type="checkbox" id="voiceHKBAvailable" defaultValue="false" hidden="true">
+				<Label> </Label>
+				<Description>Hidden checkbox indicating if HomeKit bridge is available for integration</Description>
+			</Field>
+			
+			<Field type="checkbox" id="voiceHKBEnabled" defaultValue="true" hidden="true">
+				<Label> </Label>
+				<Description>Hidden checkbox indicating if HomeKit Bridge fields can be changed</Description>
+			</Field>
+			
+			<Field type="checkbox" id="voiceAHBAvailable" defaultValue="false" hidden="true">
+				<Label> </Label>
+				<Description>Hidden checkbox indicating if Alexa-Hue bridge is available for integration</Description>
+			</Field>
+			
+			<Field type="checkbox" id="voiceAHBEnabled" defaultValue="true" hidden="true">
+				<Label> </Label>
+				<Description>Hidden checkbox indicating if Alexa-Hue bridge fields can be changed</Description>
+			</Field>
+		
+			<Field type="menu" id="voiceHKBServer" defaultValue="" visibleBindingId="voiceHKBAvailable" visibleBindingValue="true" enabledBindingId="voiceHKBEnabled" alwaysUseInDialogHeightCalc="true">
+				<Label>HomeKit Bridge server:</Label>
+				<List class="self" filter="" method="voiceHKBIntegrationServerList" dynamicReload="true"/>
+				<CallbackMethod>voiceIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<Field type="textfield" id="voiceHKBDeviceTypeList" defaultValue="FilterMaintenance,ContactSensor,OccupancySensor,MotionSensor" hidden="true">
+				<Label>Hidden OPTIONAL field to limit the device types that this device can be in HomeKit (note that you'll need to do programatic updates of existing devices if you change this later)</Label>
+			</Field>
+			
+			<Field type="menu" id="voiceHKBDeviceType" defaultValue="" visibleBindingId="voiceHKBAvailable" visibleBindingValue="true" enabledBindingId="voiceHKBEnabled" alwaysUseInDialogHeightCalc="true">
+				<Label>HomeKit device type:</Label>
+				<List class="self" filter="" method="voiceIntegrationHKBDeviceTypeList" dynamicReload="true"/>
+				<CallbackMethod>voiceIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="voiceAHBServer" defaultValue="" visibleBindingId="voiceAHBAvailable" visibleBindingValue="true" enabledBindingId="voiceAHBEnabled" alwaysUseInDialogHeightCalc="true">
+				<Label>Alexa-Hue Bridge server:</Label>
+				<List class="self" filter="" method="voiceAHBIntegrationServerList" dynamicReload="true"/>
+				<CallbackMethod>voiceIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<Field type="checkbox" id="voiceAliasEnabled" defaultValue="true" hidden="true">
+				<Label> </Label>
+				<Description>Hidden checkbox indicating if the alias name can be changed</Description>
+			</Field>
+			
+			<Field type="textfield" id="voiceAlias" defaultValue="" visibleBindingId="voiceIntegrated" visibleBindingValue="true" enabledBindingId="voiceAliasEnabled" alwaysUseInDialogHeightCalc="true" >
+				<Label>Alias Name:</Label>
+				<CallbackMethod>voiceIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<Field type="separator" id="sep_hbbConnector" alwaysUseInDialogHeightCalc="true"/>
+			<!-- End Indigo Voice Integration Block -->
+			
+			<Field id="AllowSensorValueChange" type="checkbox" hidden="true" defaultValue="false" />
+			<Field id="SupportsSensorValue" type="checkbox" defaultValue="true" hidden="true" />
+			
+			<Field type="menu" id="method" defaultValue="na" >
+				<Label>Runtime method:</Label>
+				<List>
+					<Option value="days">Days</Option>
+					<Option value="weeks">Weeks</Option>
+					<Option value="months">Months</Option>
+					<Option value="runtime">HVAC Runtime</Option>
+				</List>
+			</Field>
+			
+			<Field type="menu" id="device" defaultValue="none" visibleBindingId="method" visibleBindingValue="runtime" alwaysUseInDialogHeightCalc="true" >
+				<Label>Thermostat:</Label>
+				<List class="indigo.devices" filter="indigo.thermostat"/>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="textfield" id="runtime" visibleBindingId="method" visibleBindingValue="runtime" alwaysUseInDialogHeightCalc="true" defaultValue="1000">
+				<Label>Runtime hours:</Label>
+			</Field>
+			
+			<Field type="textfield" id="timespan" visibleBindingId="method" visibleBindingValue="days,weeks,months" alwaysUseInDialogHeightCalc="true" defaultValue="">
+				<Label>Time span:</Label>
+			</Field>
+			
+			<Field type="separator" id="sep_1" />
+			
+			<Field type="menu" id="iconOn" defaultValue="humidity" >
+				<Label>On icon:</Label>
+				<List class="self" filter="#stateicons#[index=iconOn, srcfield=device, allowui=false]" method="getCustomList" dynamicReload="true"/>
+			</Field>
+			
+			<Field type="menu" id="iconOff" defaultValue="humidity" >
+				<Label>Off icon:</Label>
+				<List class="self" filter="#stateicons#[index=iconOff, srcfield=device, allowui=false]" method="getCustomList" dynamicReload="true"/>
+			</Field>
+			
+			
+		</ConfigUI>
+		
+		<States>
+			<State id="statedisplay">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Current device state</TriggerLabel>
+				<ControlPageLabel>Current device state</ControlPageLabel>
+			</State>
+			
+			<State id="lifeLevel">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Filter life remaining</TriggerLabel>
+				<ControlPageLabel>Filter life remaining</ControlPageLabel>
+			</State>
+			
+			<State id="runtime">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Minutes of runtime since last reset</TriggerLabel>
+				<ControlPageLabel>Minutes of runtime since last reset</ControlPageLabel>
+			</State>
+			
+			<State id="lastChanged">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Date and time of last filter change or reset</TriggerLabel>
+				<ControlPageLabel>Date and time of last filter change or reset</ControlPageLabel>
+			</State>
+			
+			<State id="lastUpdate">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Date and time of last state update</TriggerLabel>
+				<ControlPageLabel>Date and time of last state update</ControlPageLabel>
+			</State>
+			
+			<State id="hvacStart">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Date and time when HVAC fan started running</TriggerLabel>
+				<ControlPageLabel>Date and time when HVAC fan started running</ControlPageLabel>
+			</State>
+			
+			<State id="hvacStop">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Date and time when HVAC fan stopped running</TriggerLabel>
+				<ControlPageLabel>Date and time when HVAC fan stopped running</ControlPageLabel>
+			</State>
+			
+			<State id="hvacRunning">
+				<ValueType>Boolean</ValueType>
+				<TriggerLabel>HVAC fan is running</TriggerLabel>
+				<ControlPageLabel>HVAC fan is running</ControlPageLabel>
+			</State>
+			
+			<State id="hvacruntime">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Minutes of HVAC runtime since last reset</TriggerLabel>
+				<ControlPageLabel>Minutes of HVAC runtime since last reset</ControlPageLabel>
+			</State>
+			
+			<State id="voiceAPIData">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Indigo Voice API Data</TriggerLabel>
+				<ControlPageLabel>Indigo Voice API Data</ControlPageLabel>
+			</State>
+			
+			<State id="sep1">
+				<ValueType>Separator</ValueType>
+			</State>
+		</States>
+		<UiDisplayStateId>statedisplay</UiDisplayStateId>
+		
+	</Device>	
+	
+	<!-- =========== RELAY TO DIMMER CONVERSION =========== -->
+	<Device type="dimmer" id="Relay-To-Dimmer">
+		<Name>Relay To Dimmer Converter</Name>
+		<ConfigUI>
+			<!-- Start Indigo Voice API Integration Block -->		
+			<Field type="checkbox" id="voiceIntegrated" defaultValue="false" hidden="false">
+				<Label>Enable for voice</Label>
+				<Description>Integrate this device into voice plugins</Description>
+				<CallbackMethod>voiceIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<!-- Future use when more than just HKB is available under this API -->
+			<Field type="menu" id="voiceIntegration" defaultValue="ALL" visibleBindingId="voiceIntegrated" visibleBindingValue="true" alwaysUseInDialogHeightCalc="true" hidden="true">
+				<Label>Integration:</Label>
+				<List class="self" filter="" method="voiceIntegrationPluginList" dynamicReload="true"/>
+				<CallbackMethod>voiceIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<Field type="checkbox" id="voiceHKBAvailable" defaultValue="false" hidden="true">
+				<Label> </Label>
+				<Description>Hidden checkbox indicating if HomeKit bridge is available for integration</Description>
+			</Field>
+			
+			<Field type="checkbox" id="voiceHKBEnabled" defaultValue="true" hidden="true">
+				<Label> </Label>
+				<Description>Hidden checkbox indicating if HomeKit Bridge fields can be changed</Description>
+			</Field>
+			
+			<Field type="checkbox" id="voiceAHBAvailable" defaultValue="false" hidden="true">
+				<Label> </Label>
+				<Description>Hidden checkbox indicating if Alexa-Hue bridge is available for integration</Description>
+			</Field>
+			
+			<Field type="checkbox" id="voiceAHBEnabled" defaultValue="true" hidden="true">
+				<Label> </Label>
+				<Description>Hidden checkbox indicating if Alexa-Hue bridge fields can be changed</Description>
+			</Field>
+		
+			<Field type="menu" id="voiceHKBServer" defaultValue="" visibleBindingId="voiceHKBAvailable" visibleBindingValue="true" enabledBindingId="voiceHKBEnabled" alwaysUseInDialogHeightCalc="true">
+				<Label>HomeKit Bridge server:</Label>
+				<List class="self" filter="" method="voiceHKBIntegrationServerList" dynamicReload="true"/>
+				<CallbackMethod>voiceIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<Field type="textfield" id="voiceHKBDeviceTypeList" defaultValue="Lightbulb,Window,Door,WindowCovering" hidden="true">
+				<Label>Hidden OPTIONAL field to limit the device types that this device can be in HomeKit (note that you'll need to do programatic updates of existing devices if you change this later)</Label>
+			</Field>
+			
+			<Field type="menu" id="voiceHKBDeviceType" defaultValue="" visibleBindingId="voiceHKBAvailable" visibleBindingValue="true" enabledBindingId="voiceHKBEnabled" alwaysUseInDialogHeightCalc="true">
+				<Label>HomeKit device type:</Label>
+				<List class="self" filter="" method="voiceIntegrationHKBDeviceTypeList" dynamicReload="true"/>
+				<CallbackMethod>voiceIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<Field type="menu" id="voiceAHBServer" defaultValue="" visibleBindingId="voiceAHBAvailable" visibleBindingValue="true" enabledBindingId="voiceAHBEnabled" alwaysUseInDialogHeightCalc="true">
+				<Label>Alexa-Hue Bridge server:</Label>
+				<List class="self" filter="" method="voiceAHBIntegrationServerList" dynamicReload="true"/>
+				<CallbackMethod>voiceIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<Field type="checkbox" id="voiceAliasEnabled" defaultValue="true" hidden="true">
+				<Label> </Label>
+				<Description>Hidden checkbox indicating if the alias name can be changed</Description>
+			</Field>
+			
+			<Field type="textfield" id="voiceAlias" defaultValue="" visibleBindingId="voiceIntegrated" visibleBindingValue="true" enabledBindingId="voiceAliasEnabled" alwaysUseInDialogHeightCalc="true" >
+				<Label>Alias Name:</Label>
+				<CallbackMethod>voiceIntegrationFieldChange</CallbackMethod>
+			</Field>
+			
+			<Field type="separator" id="sep_hbbConnector" alwaysUseInDialogHeightCalc="true"/>
+			<!-- End Indigo Voice Integration Block -->
+			
+			<Field type="menu" id="device" defaultValue="none" >
+				<Label>Source device:</Label>
+				<List class="indigo.devices" filter="indigo.relay"/>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+			<Field type="separator" id="sep_1" />
+			
+			<Field type="menu" id="iconOn" defaultValue="humidity" >
+				<Label>On icon:</Label>
+				<List class="self" filter="#stateicons#[index=iconOn, srcfield=device, allowui=false]" method="getCustomList" dynamicReload="true"/>
+			</Field>
+			
+			<Field type="menu" id="iconOff" defaultValue="humidity" >
+				<Label>Off icon:</Label>
+				<List class="self" filter="#stateicons#[index=iconOff, srcfield=device, allowui=false]" method="getCustomList" dynamicReload="true"/>
+			</Field>
+			
+			<Field type="separator" id="sep_2" />
+			
+			<Field type="checkbox" id="calibrate" defaultValue="false" >
+				<Label> </Label>
+				<Description>Calibration mode</Description>
+				<CallbackMethod>formFieldChanged</CallbackMethod>
+			</Field>
+			
+		</ConfigUI>
+		
+		<States>
+			<State id="statedisplay">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Current device state</TriggerLabel>
+				<ControlPageLabel>Current device state</ControlPageLabel>
+			</State>
+			
+			<State id="calibration">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Calibrated open-to-close runtime</TriggerLabel>
+				<ControlPageLabel>Calibrated open-to-close runtime</ControlPageLabel>
+			</State>
+			
+			<State id="currentengagement">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Seconds of engagement applied to source</TriggerLabel>
+				<ControlPageLabel>Seconds of engagement applied to source</ControlPageLabel>
+			</State>
+			
+			<State id="voiceAPIData">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Indigo Voice API Data</TriggerLabel>
+				<ControlPageLabel>Indigo Voice API Data</ControlPageLabel>
+			</State>
+			
+			<State id="position">
+				<ValueType>
+					<List>
+						<Option value="opening">Opening</Option>
+						<Option value="open">Open</Option>
+						<Option value="partopen">Partly Open</Option>
+						<Option value="halfopen">Half Open</Option>
+						<Option value="closing">Closing</Option>
+						<Option value="closed">Closed</Option>
+						<Option value="partclosed">Partly Closed</Option>
+						<Option value="halfclosed">Half Closed</Option>
+					</List>
+				</ValueType>
+				<TriggerLabel>Position Changed</TriggerLabel>
+				<TriggerLabelPrefix>Position Changed to</TriggerLabelPrefix>
+				<ControlPageLabel>Current Position</ControlPageLabel>
+				<ControlPageLabelPrefix>Position is</ControlPageLabelPrefix>
+			</State>	
+			
+			<State id="swing">
+				<ValueType>
+					<List>
+						<Option value="open">Open</Option>
+						<Option value="closed">Closed</Option>
+					</List>
+				</ValueType>
+				<TriggerLabel>Swing Changed</TriggerLabel>
+				<TriggerLabelPrefix>Swing Changed to</TriggerLabelPrefix>
+				<ControlPageLabel>Current Swing</ControlPageLabel>
+				<ControlPageLabelPrefix>Swing is</ControlPageLabelPrefix>
+			</State>	
+			
+			<State id="sep1">
+				<ValueType>Separator</ValueType>
+			</State>
+		</States>
+		<UiDisplayStateId>statedisplay</UiDisplayStateId>
+		
+	</Device>	
+	
+
+	
 	<!-- =========== THERMOSTAT EXTENSION =========== -->
 	<Device type="custom" id="epsdeth">
 		<Name>Thermostat Extension</Name>

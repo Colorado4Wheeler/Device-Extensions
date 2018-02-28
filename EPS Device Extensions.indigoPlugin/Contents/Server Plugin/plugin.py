@@ -21,12 +21,25 @@ from datetime import date, timedelta
 import urllib2 # for URL device
 from lib import calcs
 import json
+import thread
 
-from lib.hbb import HomebridgeBuddy
-hbb = HomebridgeBuddy()
+from lib.ivoice import IndigoVoice
+ivoice = IndigoVoice()
 
 
 eps = eps(None)
+
+# Enumerations
+kCurtainPositionOpening = u'opening'
+kCurtainPositionPartOpen = u'partopen'
+kCurtainPositionHalfOpen = u'halfopen'
+kCurtainPositionOpen = u'open'
+kCurtainPositionClosing = u'closing'
+kCurtainPositionPartClosed = u'partclosed'
+kCurtainPositionHalfClosed = u'halfclosed'
+kCurtainPositionClosed = u'closed'
+kCurtainSwingOpen = u'open'
+kCurtainSwingClosed = u'closed'
 
 ################################################################################
 # plugin - 	Basically serves as a shell for the main plugin functions, it passes
@@ -41,6 +54,12 @@ class Plugin(indigo.PluginBase):
 	TVERSION	= "3.2.1"
 	PLUGIN_LIBS = ["cache", "plugcache", "irr"]
 	UPDATE_URL 	= ""
+	
+	# For the Relay To Dimmer Converter
+	StartCalibrationTime = None
+	StopCalibrationTime = None
+		
+	CalibrationTimes = []
 	
 	#
 	# Init
@@ -293,6 +312,27 @@ class Plugin(indigo.PluginBase):
 						
 						ret[int(d)] = states
 						
+			if dev.deviceTypeId == "Filter-Sensor":	
+				if ext.valueValid (dev.pluginProps, "device", True):
+					states = []	
+					child = indigo.devices[int(dev.pluginProps["device"])]
+					
+					# Some of these aren't actually needed but when they change (like temperature) it's regularly updating our device without having to put it in concurrent thread :)
+					if ext.valueValid (child.states, "temperatureInput1"): states.append ("temperatureInput1")
+					if ext.valueValid (child.states, "humidityInput1"): states.append ("humidityInput1")
+					if ext.valueValid (child.states, "hvacFanModeIsAuto"): states.append ("hvacFanModeIsAuto")
+					if ext.valueValid (child.states, "hvacFanModeIsAlwaysOn"): states.append ("hvacFanModeIsAlwaysOn")
+					if ext.valueValid (child.states, "hvacOperationModeIsOff"): states.append ("hvacOperationModeIsOff")
+					if ext.valueValid (child.states, "setpointCool"): states.append ("setpointCool")
+					if ext.valueValid (child.states, "setpointHeat"): states.append ("setpointHeat")
+					if ext.valueValid (child.states, "hvacFanIsOn"): states.append ("hvacFanIsOn")
+
+					if ext.valueValid (child.states, "iscooling"): states.append ("iscooling") # Nest
+					if ext.valueValid (child.states, "isheating"): states.append ("isheating") # Nest
+					if ext.valueValid (child.states, "fan_timer_active"): states.append ("fan_timer_active") # Nest
+					
+					if len(states) > 0: ret[int(dev.pluginProps["device"])] = states
+						
 										
 		except Exception as e:
 			self.logger.error (ext.getException(e))	
@@ -410,9 +450,29 @@ class Plugin(indigo.PluginBase):
 			errorDict = indigo.Dict()
 			success = True
 			
+			if typeId == "Relay-To-Dimmer":
+				return self.relayToDimmerValidateDeviceConfigUi (valuesDict, typeId, devId)
+			
 			# Make sure if this device is not doing elapsed minutes that is is not getting constantly polled
 			if typeId == "epsdecon":
+				dev = indigo.devices[devId]
 				if dev.deviceTypeId == "epsdecon" and dev.pluginProps["action"] != "dtmin":
+					if dev.id in self.updateDevices:
+						newdevices = []
+						for d in self.updateDevices:
+							if d != dev.id:
+								newdevices.append(d)
+								
+						self.updateDevices = newdevices
+			
+			# If we have filter sensors that aren't using HVAC runtime we need to check them regularly			
+			if typeId == "Filter-Sensor":
+				dev = indigo.devices[devId]
+				if dev.deviceTypeId == "Filter-Sensor" and dev.pluginProps["method"] != "runtime":
+					if dev.id not in self.updateDevices:
+						self.updateDevices.append (dev.id)
+				else:
+					# If it's doing HVAC make sure it is NOT getting polled regularly
 					if dev.id in self.updateDevices:
 						newdevices = []
 						for d in self.updateDevices:
@@ -509,6 +569,9 @@ class Plugin(indigo.PluginBase):
 			# For Date Time to Elapsed Minutes we have to monitor constantly, add to update devices
 			if dev.deviceTypeId == "epsdecon" and dev.pluginProps["action"] == "dtmin":
 				self.updateDevices.append (dev.id)
+				
+			if dev.deviceTypeId == "Filter-Sensor" and dev.pluginProps["method"] != "runtime":
+				self.updateDevices.append (dev.id)	
 							
 		except Exception as e:
 			self.logger.error (ext.getException(e))		
@@ -520,6 +583,7 @@ class Plugin(indigo.PluginBase):
 		try:
 			if typeId == "thermostat-wrapper": return self.onAfter_formFieldChanged_Thermostat_Wrapper (valuesDict, typeId, devId)	
 			if typeId == "hue-color-group": return self.onAfter_formFieldChanged_Hue_Color_Group (valuesDict, typeId, devId)	
+			if typeId == "Relay-To-Dimmer": return self.relayToDimmerFormFieldChanged (valuesDict, typeId, devId)	
 			
 			if typeId == "epsdecon":
 				if valuesDict["action"] == "true" or valuesDict["action"] == "false":
@@ -675,6 +739,9 @@ class Plugin(indigo.PluginBase):
 	#
 	def onDeviceCommandTurnOn (self, dev):
 		try:
+			if dev.deviceTypeId == "Relay-To-Dimmer":
+				return self.relayToDimmerTurnedOn (dev)
+			
 			if "onCommand" in dev.pluginProps and dev.pluginProps["onCommand"] != "":
 				if self.urlDeviceAction (dev, dev.pluginProps["onCommand"]) == False: 
 					return False			
@@ -699,6 +766,9 @@ class Plugin(indigo.PluginBase):
 	#
 	def onDeviceCommandTurnOff (self, dev):
 		try:
+			if dev.deviceTypeId == "Relay-To-Dimmer":
+				return self.relayToDimmerTurnedOff (dev)
+				
 			if "offCommand" in dev.pluginProps and dev.pluginProps["offCommand"] != "":
 				if self.urlDeviceAction (dev, dev.pluginProps["onCommand"]) == False: 
 					return False			
@@ -771,6 +841,9 @@ class Plugin(indigo.PluginBase):
 	#
 	def onDeviceCommandSetBrightness (self, dev, amount):
 		try:
+			if dev.deviceTypeId == "Relay-To-Dimmer":
+				return self.relayToDimmerSetBrightness (dev, amount)
+				
 			if dev.deviceTypeId == "hue-color-group":
 				for d in dev.pluginProps["huelights"]:
 					if int(d) in indigo.devices:
@@ -821,13 +894,523 @@ class Plugin(indigo.PluginBase):
 	################################################################################	
 	
 	################################################################################
-	# HOMEBRIDGE BUDDY INTEGRATION
+	# INDIGO VOICE API INTEGRATION
 	################################################################################
 	
-	def hbbCheckForPlugin (self): return hbb.checkForPlugin ()
-	def hbbIntegrationFieldChange (self, valuesDict, typeId, devId): return hbb.integrationFieldChange (valuesDict, typeId, devId)
-	def hbbIntegrationServerList (self, filter="", valuesDict=None, typeId="", targetId=0): return hbb.integrationServerList (filter, valuesDict, typeId, targetId)
-	def hbbIntegrationTreatAsList (self, filter="", valuesDict=None, typeId="", targetId=0): return hbb.integrationTreatAsList (filter, valuesDict, typeId, targetId)
+	def voiceIntegrationFieldChange (self, valuesDict, typeId, devId): return ivoice.integrationFieldChange (valuesDict, typeId, devId)
+	def voiceHKBIntegrationServerList (self, filter="", valuesDict=None, typeId="", targetId=0): return ivoice.HKBIntegrationServerList (filter, valuesDict, typeId, targetId)
+	def voiceAHBIntegrationServerList (self, filter="", valuesDict=None, typeId="", targetId=0): return ivoice.AHBIntegrationServerList (filter, valuesDict, typeId, targetId)
+	def voiceIntegrationHKBDeviceTypeList (self, filter="", valuesDict=None, typeId="", targetId=0): return ivoice.IntegrationHKBDeviceTypeList (filter, valuesDict, typeId, targetId)
+	def voiceIntegrationPluginList (self, filter="", valuesDict=None, typeId="", targetId=0): return ivoice.IntegrationPluginList (filter, valuesDict, typeId, targetId)
+	def voiceAPICall (self, action): return ivoice.APICall (action)
+	
+	################################################################################
+	# FILTER SENSOR
+	################################################################################	
+	
+	#
+	# Filter Sensor Actions
+	#
+	def filterSensorAction (self, devAction):
+		try:
+			parent = indigo.devices[devAction.deviceId]
+			
+			# Reset all states
+			states = []
+
+			states = iutil.updateState ("hvacRunning", False, states)
+			states = iutil.updateState ("hvacruntime", 0, states)
+			states = iutil.updateState ("runtime", 0, states, "")
+			states = iutil.updateState ("lifeLevel", 0, states)
+			states = iutil.updateState ("onOffState", False, states)
+			states = iutil.updateState ("sensorValue", 100, states, "100.0%")
+						
+			parent.updateStatesOnServer (states)
+									
+			indigo.server.log(unicode(devAction))
+			
+		except Exception as e:
+			self.logger.error (ext.getException(e))
+	
+	#
+	# Update filter sensor
+	#
+	def _updateFilterSensor (self, parent, child, value):
+		try:
+			hvacruntime = parent.states["hvacruntime"]
+			d = indigo.server.getTime()
+			
+			if parent.states["lastChanged"] == "":
+				parent.updateStateOnServer(key="lastChanged", value=d.strftime("%Y-%m-%d %H:%M:%S"))	
+				
+			if parent.states["lastUpdate"] == "":
+				parent.updateStateOnServer(key="lastUpdate", value=d.strftime("%Y-%m-%d %H:%M:%S"))	
+			
+			# Calculate minutes since last reset - mostly used for our date based reset sensors
+			hours = dtutil.dateDiff ("hours", indigo.server.getTime(), datetime.datetime.strptime (parent.states["lastChanged"], "%Y-%m-%d %H:%M:%S"))
+			days = round(hours / 24, 5)
+			weeks = round(days / 7, 5)
+			months = round(days / 30, 5)
+			runtimeUI = str(round(hours, 5)) + " Hours"
+			
+			# Set up the UI
+			if parent.pluginProps["method"] == "days": runtimeUI = str(round(days, 1)) + " Days"
+			if parent.pluginProps["method"] == "weeks": runtimeUI = str(round(weeks, 1)) + " Weeks"
+			if parent.pluginProps["method"] == "months": runtimeUI = str(round(months, 1)) + " Months"
+			
+						
+			# If it's a thermostat based sensor then calculate run times if needed
+			if parent.pluginProps["method"] == "runtime":
+				if child.pluginId != "com.corporatechameleon.nestplugBeta":
+					if child.fanIsOn and not parent.states["hvacRunning"]:
+						parent.updateStateOnServer(key="hvacStart", value=d.strftime("%Y-%m-%d %H:%M:%S")) # Start tracking on time
+						parent.updateStateOnServer(key="hvacRunning", value=True)
+				
+					elif not child.fanIsOn and parent.states["hvacRunning"]:
+						parent.updateStateOnServer(key="hvacStop", value=d.strftime("%Y-%m-%d %H:%M:%S")) # Start tracking on time
+						parent.updateStateOnServer(key="hvacRunning", value=False)
+						hvacruntime = hvacruntime + dtutil.dateDiff ("hours", datetime.datetime.strptime (parent.states["hvacStop"], "%Y-%m-%d %H:%M:%S"), datetime.datetime.strptime (parent.states["hvacStart"], "%Y-%m-%d %H:%M:%S"))
+				
+				elif child.pluginId == "com.corporatechameleon.nestplugBeta":	
+					if not parent.states["hvacRunning"]:
+						if child.states["iscooling"] == "Yes" or child.states["isheating"] == "Yes" or child.states["fan_timer_active"] or unicode(child.fanMode) == "AlwaysOn":
+							parent.updateStateOnServer(key="hvacStart", value=d.strftime("%Y-%m-%d %H:%M:%S")) # Start tracking on time
+							parent.updateStateOnServer(key="hvacRunning", value=True)
+							#indigo.server.log ("HVAC TRACKING ON: \n" + unicode(child.states))
+				
+					elif parent.states["hvacRunning"]:
+						#indigo.server.log ("3\n{}\n{}\n{}\n{}".format(unicode(child.states["iscooling"]), unicode(child.states["isheating"]), unicode(child.states["fan_timer_active"]), unicode(child.states["hvacFanModeIsAlwaysOn"])))
+						if child.states["iscooling"] == "No" and child.states["isheating"] == "No" and child.states["fan_timer_active"] == False and child.states["hvacFanModeIsAlwaysOn"] == False:
+							parent.updateStateOnServer(key="hvacStop", value=d.strftime("%Y-%m-%d %H:%M:%S")) # Start tracking on time
+							parent.updateStateOnServer(key="hvacRunning", value=False)
+							hvacruntime = hvacruntime + dtutil.dateDiff ("hours", datetime.datetime.strptime (parent.states["hvacStop"], "%Y-%m-%d %H:%M:%S"), datetime.datetime.strptime (parent.states["hvacStart"], "%Y-%m-%d %H:%M:%S"))
+							#indigo.server.log ("HVAC TRACKING OFF")
+						
+			calcvalue = 0
+			threshold = 0
+			
+			if parent.pluginProps["method"] == "runtime":
+				calcvalue = hvacruntime
+				if parent.pluginProps["runtime"] != "": threshold = float(parent.pluginProps["runtime"])
+			
+			else:
+				if parent.pluginProps["timespan"] != "": threshold = float(parent.pluginProps["timespan"])
+				if parent.pluginProps["method"] == "days": calcvalue = days
+				if parent.pluginProps["method"] == "weeks": calcvalue = weeks
+				if parent.pluginProps["method"] == "months": calcvalue = months
+				
+			if calcvalue >= threshold and not parent.states["onOffState"]:
+				parent.updateStateOnServer(key="onOffState", value=True)
+			elif calcvalue < threshold and parent.states["onOffState"]:
+				parent.updateStateOnServer(key="onOffState", value=False)	
+			
+			# Calculate the sensor value of percent until the filter is used
+			sensorvalue = 100 - (float(calcvalue / threshold) * 100) # 100% is max filter, so subtract our value from 100 to get the life left
+					
+			# Always set our update
+			parent.updateStateOnServer(key="lastUpdate", value=d.strftime("%Y-%m-%d %H:%M:%S"))	
+			parent.updateStateOnServer(key="runtime", value=hours, uiValue=runtimeUI)
+			parent.updateStateOnServer(key="hvacruntime", value=round(hvacruntime, 5), uiValue=str(round(hvacruntime, 1)) + " Hours")	
+			parent.updateStateOnServer(key="sensorValue", value=round(sensorvalue, 1), uiValue = str(round(sensorvalue, 1)) + "%" )
+			
+			return
+			
+			states = []
+			bulbs = []
+			allOn = True
+			anyOn = False
+			master = 0
+			
+			if parent.pluginProps["keepsync"] != "none" and parent.pluginProps["keepsync"] != "": master = int(parent.pluginProps["keepsync"])
+			
+			for d in parent.pluginProps["huelights"]:
+				if int(d) in indigo.devices:
+					bulb = indigo.devices[int(d)]
+					if not bulb.states["onOffState"]: allOn = False
+					if bulb.states["onOffState"]: anyOn = True
+					bulbs.append(bulb)
+					
+			for b in bulbs:
+				# If there is a master bulb then we ignore all others, otherwise we just take whatever
+				if master != 0 and b.id != master:
+					continue
+					
+				for state in b.states:
+					if state in parent.states:
+						states = iutil.updateState (state, b.states[state], states)
+						
+			parent.updateStatesOnServer (states)
+			
+			# If we are synchronizing then do that now
+			if master !=0:
+				bulb = indigo.devices[master]
+				
+				for b in bulbs:
+					if b.id != bulb.id:
+						if b.onState != bulb.onState:
+							if bulb.onState:
+								indigo.dimmer.turnOn (b.id)
+							else:
+								indigo.dimmer.turnOff (b.id)
+								
+						if b.brightness != bulb.brightness:
+							indigo.dimmer.setBrightness (b.id, value=bulb.brightness)	
+							
+						if b.whiteLevel != bulb.whiteLevel:
+							indigo.dimmer.setColorLevels (b.id, whiteLevel=bulb.whiteLevel)
+						
+						if b.whiteLevel2 != bulb.whiteLevel2:
+							indigo.dimmer.setColorLevels (b.id, whiteLevel2=bulb.whiteLevel2)
+						
+						if b.whiteTemperature != bulb.whiteTemperature:
+							indigo.dimmer.setColorLevels (b.id, whiteTemperature=bulb.whiteTemperature)
+						
+						if b.redLevel != bulb.redLevel or b.greenLevel != bulb.greenLevel or b.blueLevel != bulb.blueLevel:
+							indigo.dimmer.setColorLevels (b.id, redLevel=bulb.redLevel, greenLevel=bulb.greenLevel, blueLevel=bulb.blueLevel)
+						
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			parent.updateStateOnServer(key="statedisplay", value="Error", uiValue="Error")	
+	
+	################################################################################
+	# RELAY TO DIMMER CONVERSION
+	################################################################################
+	
+	#
+	# Validate form
+	#
+	def relayToDimmerValidateDeviceConfigUi (self, valuesDict, typeId, devId):
+		try:
+			success = True
+			errorsDict = indigo.Dict()
+			
+			if valuesDict["device"] == "":
+				errorsDict["showAlertText"] = "You must enter a relay device that this converted dimmer will be attached to."
+				errorsDict["device"] = "Invalid device"
+				return (False, valuesDict, errorsDict)
+				
+			(voiceSuccess, valuesDict, voiceErrors) = ivoice.validateDeviceConfigUi (valuesDict, typeId, devId)
+			if not voiceSuccess: return (False, valuesDict, voiceErrors)
+				
+			valuesDict["address"] = indigo.devices[int(valuesDict["device"])].name
+			
+			if valuesDict["calibrate"]:
+				indigo.devices[devId].updateStateOnServer("position", kCurtainPositionOpen)
+				indigo.devices[devId].updateStateOnServer("onOffState", False, uiValue=kCurtainPositionOpen)
+
+				msg = eps.ui.debugHeader ("CALIBRATION MODE")
+				msg += eps.ui.debugLine ("Your device is in calibration mode, all on/off commands will be ")
+				msg += eps.ui.debugLine ("used for calibration for the next six cycles.  To calibrate ")
+				msg += eps.ui.debugLine ("use the following steps: ")
+				msg += eps.ui.debugLine (" ")
+				msg += eps.ui.debugLine ("Before you begin make sure that your source is ON or OPEN.")
+				msg += eps.ui.debugLine (" ")
+				msg += eps.ui.debugLine ("1. Turn ON the device, OFF when source is OFF or CLOSED")
+				msg += eps.ui.debugLine ("2. Turn ON the device, OFF when source ON or OPEN")
+				msg += eps.ui.debugLine ("3. Repeat steps 1-2 again (total of 6 ON/OFF cycles)")					
+				msg += eps.ui.debugLine (" ")
+				msg += eps.ui.debugLine ("When calibration is complete it will take the device out of  ")
+				msg += eps.ui.debugLine ("calibration mode and it can be controlled normally.")
+					
+				msg += eps.ui.debugHeaderEx ()	
+				self.logger.warning (msg)
+				
+			self.relayToDimmerUpdateStateIcon (devId)
+			
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return (success, valuesDict, errorsDict)
+		
+	#
+	# Device ON received
+	#
+	def relayToDimmerTurnedOn (self, dev):
+		try:
+			if not "device" in dev.pluginProps or dev.pluginProps["device"] == "":
+				self.logger.error ("The device that '{}' is supposed to be converting has not been defined".format(dev.name))
+				return False
+								
+			outlet = indigo.devices[int(dev.pluginProps["device"])]
+			
+			if not dev.pluginProps["calibrate"]:
+				# Open
+				thread.start_new_thread(self.relayToDimmerSetToPercentage, (dev, outlet, 100))
+				#self.relayToDimmerSetDeviceState (dev, 100)
+				return True
+				
+			else:
+				msg = eps.ui.debugHeader ("CALIBRATION #{} BEGIN".format(len(self.CalibrationTimes) + 1))
+				self.logger.info (msg)
+				
+				self.StartCalibrationTime = indigo.server.getTime()
+				indigo.device.turnOn (outlet.id)
+				return True
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+	
+	
+	#
+	# Device OFF received
+	#
+	def relayToDimmerTurnedOff (self, dev):
+		try:
+			if not "device" in dev.pluginProps or dev.pluginProps["device"] == "":
+				self.logger.error ("The device that '{}' is supposed to be converting has not been defined".format(dev.name))
+				return False
+								
+			outlet = indigo.devices[int(dev.pluginProps["device"])]
+				
+			if not dev.pluginProps["calibrate"]:
+				# Close
+				thread.start_new_thread(self.relayToDimmerSetToPercentage, (dev, outlet, 0))
+				#self.relayToDimmerSetDeviceState (dev, 0)
+				return True	
+			else:
+				if dev.pluginProps["calibrate"]:
+					self.relayToDimmerCurtainCalibration (dev, outlet)
+				
+				return True
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))		
+			
+	#
+	# Set brightness of the curtains
+	#
+	def relayToDimmerSetBrightness (self, dev, amount):
+		try:
+			if not "device" in dev.pluginProps or dev.pluginProps["device"] == "":
+				self.logger.error ("The device that '{}' is supposed to be converting has not been defined".format(dev.name))
+				return False
+								
+			outlet = indigo.devices[int(dev.pluginProps["device"])]
+			
+			thread.start_new_thread(self.relayToDimmerSetToPercentage, (dev, outlet, amount))
+			return True
+			
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+	#
+	# Run curtains for a number of seconds
+	#
+	def relayToDimmerSetToPercentage (self, dev, outlet, percentage, delay = 0.0):		
+		try:
+			if delay != 0: time.sleep(delay)
+			if dev.brightness == percentage: return
+			
+			self.logger.info ("Processing '{}' to set to {}% from {}% that it is currently at".format(dev.name, percentage, dev.brightness))
+			
+			calibration = float(dev.states["calibration"])
+			calibrationFraction = calibration / 100 # seconds per percent
+			currentengagement = float(dev.states["currentengagement"]) # How many seconds we have run if we are not open or closed
+			thisengagement = 0 # How many ACTUAL seconds we run if not opening or closing during this function
+			
+			swingLevel = dev.brightness # This will change if our swing is closed
+			percentLevel = percentage # This will change if our swing is closed
+			brightnessLevel = dev.brightness # Constant
+			
+			sleeptime = 0
+			padding = 5 # Seconds to pad when we are opening or closing to ensure we get all the way there
+			transitionState = kCurtainPositionOpening
+						
+			if dev.brightness == 100 and percentage == 0: # Open to close
+				sleeptime = calibration
+				transitionState = kCurtainPositionClosing
+			
+			elif dev.brightness == 0 and percentage == 100: # Close to open
+				sleeptime = calibration
+
+			else:
+				if dev.states["swing"] == "open":
+					# Brightness if face value (75% brightness is almost all the way open)
+					if percentage < dev.brightness:
+						# In order to go back we have to fully open, then reverse (and invert the value) to get to the destination
+						self.relayToDimmerSetToPercentage (dev, outlet, 100)
+						time.sleep(3) # Give it time to finish the cycle, otherwise it may cycle off-on-off too fast
+						transitionState = kCurtainPositionClosing	
+						swingLevel = 100 - dev.brightness
+						percentLevel = 100 - percentage
+						indigo.devices[dev.id].updateStateOnServer ("currentengagement", 0) # Reset as we would below
+						currentengagement = 0
+					
+				else:
+					transitionState = kCurtainPositionClosing
+					
+					# We have to reverse things because 75% brightness is actually 25% closed from an open state
+					swingLevel = 100 - dev.brightness
+					percentLevel = 100 - percentage
+					
+					if dev.brightness < percentage:
+						# In order to go back we have to fully close, then reverse (and invert the value) to get to the destination
+						self.relayToDimmerSetToPercentage (dev, outlet, 0)
+						time.sleep(3) # Give it time to finish the cycle, otherwise it may cycle off-on-off too fast
+						transitionState = kCurtainPositionOpening
+						swingLevel = dev.brightness
+						percentLevel = percentage
+						indigo.devices[dev.id].updateStateOnServer ("currentengagement", 0) # Reset as we would below
+						currentengagement = 0
+										
+				sleeptime = (percentLevel * calibrationFraction) - currentengagement						
+				thisengagement = sleeptime
+				
+				
+			# Everything now is common no matter what the percentage is
+			if percentage == 100 or percentage == 0: sleeptime = sleeptime + padding
+
+			self.logger.info ("Running {} for {} seconds".format(dev.name, str(sleeptime)))
+			
+			indigo.devices[dev.id].updateStateOnServer ("brightnessLevel", dev.brightness, uiValue=transitionState)
+			
+			self.logger.info ("Turning on '{}'".format(outlet.name))
+			indigo.device.turnOn (outlet.id)
+			time.sleep(sleeptime)
+			indigo.device.turnOff (outlet.id)
+			self.logger.info ("Just turned off '{}'".format(outlet.name))
+			
+			if percentage != 0 and percentage != 100:
+				indigo.devices[dev.id].updateStateOnServer ("currentengagement", currentengagement + thisengagement)
+			else:
+				indigo.devices[dev.id].updateStateOnServer ("currentengagement", 0)
+				
+			
+			self.relayToDimmerSetDeviceState (indigo.devices[dev.id], percentage)
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))		
+			
+	#
+	# Set state to match brightness
+	#
+	def relayToDimmerSetDeviceState (self, dev, percentage):
+		try:
+			if percentage == 100: 
+				indigo.devices[dev.id].updateStateOnServer("onOffState", True, uiValue=kCurtainPositionOpen)
+				indigo.devices[dev.id].updateStateOnServer("brightnessLevel", percentage, uiValue=kCurtainPositionOpen)
+				
+				indigo.devices[dev.id].updateStateOnServer("position", kCurtainPositionOpen)
+				indigo.devices[dev.id].updateStateOnServer("swing", kCurtainSwingClosed) # Next action starts closing
+				
+			elif percentage == 0: 
+				indigo.devices[dev.id].updateStateOnServer("onOffState", False, uiValue=kCurtainPositionClosed)
+				indigo.devices[dev.id].updateStateOnServer("brightnessLevel", percentage, uiValue=kCurtainPositionClosed)
+				
+				indigo.devices[dev.id].updateStateOnServer("position", kCurtainPositionClosed)
+				indigo.devices[dev.id].updateStateOnServer("swing", kCurtainSwingOpen) # Next action starts opening	
+				
+			elif percentage == 50: 
+				if dev.states["swing"] == "open":
+					indigo.devices[dev.id].updateStateOnServer("onOffState", True, uiValue=kCurtainPositionHalfOpen)
+					indigo.devices[dev.id].updateStateOnServer("brightnessLevel", percentage, uiValue=kCurtainPositionHalfOpen)
+				
+					indigo.devices[dev.id].updateStateOnServer("position", kCurtainPositionHalfOpen)	
+				else:
+					indigo.devices[dev.id].updateStateOnServer("onOffState", True, uiValue=kCurtainPositionHalfClosed)
+					indigo.devices[dev.id].updateStateOnServer("brightnessLevel", percentage, uiValue=kCurtainPositionHalfClosed)
+					
+					indigo.devices[dev.id].updateStateOnServer("position", kCurtainPositionHalfClosed)	
+					
+			else: 
+				if dev.states["swing"] == "open":
+					indigo.devices[dev.id].updateStateOnServer("onOffState", True, uiValue=kCurtainPositionPartOpen)
+					indigo.devices[dev.id].updateStateOnServer("brightnessLevel", percentage, uiValue=kCurtainPositionPartOpen)
+					
+					indigo.devices[dev.id].updateStateOnServer("position", kCurtainPositionPartOpen)	
+				else:
+					indigo.devices[dev.id].updateStateOnServer("onOffState", True, uiValue=kCurtainPositionPartClosed)
+					indigo.devices[dev.id].updateStateOnServer("brightnessLevel", percentage, uiValue=kCurtainPositionPartClosed)
+					
+					indigo.devices[dev.id].updateStateOnServer("position", kCurtainPositionPartClosed)	
+				
+			self.relayToDimmerUpdateStateIcon (dev.id)
+			
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+	#
+	# Curtain calibration
+	#
+	def relayToDimmerCurtainCalibration (self, dev, outlet):
+		try:
+			self.StopCalibrationTime = indigo.server.getTime()
+			d  = dtutil.dateDiff ("seconds", self.StopCalibrationTime, self.StartCalibrationTime)
+			indigo.device.turnOff (outlet.id)
+			
+			calibrationruns = len(self.CalibrationTimes) + 1
+			self.CalibrationTimes.append(d)
+								
+			msg = eps.ui.debugHeader ("CALIBRATION #{} COMPLETE IN {} SECONDS)".format(str(calibrationruns), str(d)))
+			self.logger.info (msg)
+			
+			if calibrationruns == 6:
+				total = 0
+				for n in self.CalibrationTimes:
+					total = total + n
+					
+				total = total / 6
+				total = round(total, 2)
+			
+				msg = eps.ui.debugHeader ("CALIBRATION COMPLETE")
+				msg += eps.ui.debugLine ("Results: ")
+				msg += eps.ui.debugLine (" ")
+				msg += eps.ui.debugLine ("Average time to cycle between OPEN and CLOSED: {} seconds".format(str(total)))
+				msg += eps.ui.debugHeaderEx ()
+
+				self.logger.warning (msg)
+				
+				indigo.devices[dev].updateStateOnServer("position", kCurtainPositionOpen)
+				
+				indigo.devices[dev].updateStateOnServer("calibration", total)
+				indigo.devices[dev].updateStateOnServer("onOffState", True, uiValue=kCurtainPositionOpen)
+				
+				sourceProps = dev.pluginProps
+				sourceProps["calibrate"] = False
+				dev.replacePluginPropsOnServer(sourceProps)
+				
+				self.CalibrationTimes = [] # Reset for next calibration
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+	#
+	# Form field changed
+	#
+	def relayToDimmerFormFieldChanged (self, valuesDict, typeId, devId):
+		try:
+			if valuesDict["iconOn"] == "":
+				valuesDict["iconOn"] = "WindowSensorOpened"
+				
+			if valuesDict["iconOff"] == "":
+				valuesDict["iconOff"] = "WindowSensorClosed"	
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+			
+		return valuesDict
+		
+	#
+	# Change the icon
+	#
+	def relayToDimmerUpdateStateIcon (self, devId):
+		try:
+			if int(devId) in indigo.devices:
+				dev = indigo.devices[int(devId)]
+				
+				if dev.onState:
+					dev.updateStateImageOnServer(eps.ui.getIndigoIconForKeyword(dev.pluginProps["iconOn"]))
+				else:
+					dev.updateStateImageOnServer(eps.ui.getIndigoIconForKeyword(dev.pluginProps["iconOff"]))
+		
+		except Exception as e:
+			self.logger.error (ext.getException(e))	
+	
+	################################################################################
+	# FUNCTIONS BELOW THIS LINE NEED TO BE CLEANED UP AND MIGRATED TO THE NAMING
+	# SYSTEM ABOVE
+	################################################################################	
 	
 	################################################################################
 	# GENERAL
@@ -997,6 +1580,9 @@ class Plugin(indigo.PluginBase):
 				self.updateDeviceAddress (parent, None)
 				return self._updateVirtualColorHueGroup (parent, child, value)	
 				
+			elif parent.deviceTypeId == "Filter-Sensor":	
+				self.updateDeviceAddress (parent, None)
+				return self._updateFilterSensor (parent, child, value)	
 		
 		except Exception as e:
 			self.logger.error (ext.getException(e))	

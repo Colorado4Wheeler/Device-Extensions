@@ -1,15 +1,16 @@
 Release Notes
 ==========
 
-Version 2.1.0 (includes releases 2.5.0 forward as they were 2.1.0 previews)
+Version 2.0.5: 2.1.0 preview (includes releases 2.0.4 forward as they were 2.1.0 previews)
 ---------------
-
-* ALL CONVERSIONS NOW AVAILABLE AS ACTIONS AS WELL AS DEVICES!  You can also output the result to a variable, the console log or to your speakers via text to speech
-* Added new device Virtual Color/Ambiant Hue Device Group that allows you to group together Hue bulbs so you can control them in tandem, including changing colors
-* Added new action to direct speech to a specific Airfoil speaker or the system audio and then disconnect from the speaker (if using Airfoil), with the ability to inject variables or device states dynamically into the spoken phrase
+* [ALL CONVERSIONS NOW AVAILABLE AS ACTIONS AS WELL AS DEVICES](https://github.com/Colorado4Wheeler/Device-Extensions/wiki/Actions#conversion-action)!  You can also output the result to a variable, the console log or to your speakers via text to speech
+* Added new device [Virtual Color/Ambiant Hue Device Group](https://github.com/Colorado4Wheeler/Device-Extensions/wiki/Extension:-Color-Hue-Group) that allows you to group together Hue bulbs so you can control them in tandem, including changing colors
+* Added new device [Relay To Dimmer Conversion](https://github.com/Colorado4Wheeler/Device-Extensions/wiki/Relay-to-Dimmer-Conversion) that allows you to mimic dimmer commands (i.e., brightness) on a relay device by calibrating the On/Off times to a full cycle to give you percentages of "On".  This was created as a result of my own need to have my curtains (which are on/off cycle) to work with HomeKit and be able to open to a certain percentage even though my curtains don't support that - now they do!
+* Added new device [Filter Sensor](https://github.com/Colorado4Wheeler/Device-Extensions/wiki/Filter-Sensor), mostly a direct need for HomeKit that allows you to have a filter sensor come on when it's time to change a filter.  Can be based on days/weeks/months or the run time of your HVAC if you want to use it for your furnace filter
+* Added new [action to direct speech to a specific Airfoil speaker](https://github.com/Colorado4Wheeler/Device-Extensions/wiki/Actions#extended-speech) or the system audio and then disconnect from the speaker (if using Airfoil), with the ability to inject variables or device states dynamically into the spoken phrase
 * Added all remaining values and functions to the Thermostat Wrapper.  As of now you can only use device states for values and action groups for functions but if there is a call to do more in the future this may be added
-* Added API hooks into Homebridge Buddy
-* Added Homebridge Buddy integration into the recently created Thermostat Wrapper, thus beginning the process of migrating all Wrapper and Alias devices from Homebridge Buddy to this and other 3rd party applications instead
+* Added API hooks into HomeKit Bridge
+* Added HomeKit Bridge integration into the recently created Thermostat Wrapper, thus beginning the process of migrating all Wrapper and Alias devices from Homebridge Buddy to this and other 3rd party applications instead
 * Added ability to execute an action group on Time to Elapsed Minutes conversions if the elapsed minutes exceeds the provided threshold
 * Added real-time updates for Conversion Extensions when using Convert Date/Time to Elapsed Minutes, meaning that the system will update these every 60 seconds from their source since in both of these cases the source data may not change but our status needs to.  Note that this will add a slight increase to the CPU usage, but probably not more than 0.1% to 0.3% depending on how many of these conversions you are doing
 * Added plugin configuration for device address updates so that now a Conversion Extension can show the type of conversion it is doing in the address or than the device or variable it is doing it on (all previous versions did the latter)

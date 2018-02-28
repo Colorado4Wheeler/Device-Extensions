@@ -4,6 +4,13 @@
 	<!-- Defaults to the main ColoradoFourWheeler forum on Indigo -->
 	<SupportURL>http://forums.indigodomo.com/viewforum.php?f=192</SupportURL>
 	
+	<Action id="filterSensorChange" deviceFilter="com.eps.indigoplugin.device-extensions.Filter-Sensor" uiPath="DeviceActions">
+		<Name>Change filter and reset sensor</Name>
+		<CallbackMethod>filterSensorAction</CallbackMethod>
+	</Action>
+	
+	<Action id="sep_filterSensor" uiPath="DeviceActions"/>
+	
 	<Action id="th-fantoggle" deviceFilter="com.eps.indigoplugin.device-extensions.epsdeth" uiPath="DeviceActions">
 		<Name>Thermostat - Toggle fan Always On/Auto On</Name>
 		<CallbackMethod>thermostatAction</CallbackMethod>
@@ -427,4 +434,12 @@ Each successive execution of quick pause will add the time to the pause time (i.
 		
 		</ConfigUI>
 	</Action>
+	
+	
+	<!-- Hidden Actions For API -->
+	<Action id="voiceAPI" uiPath="hidden">
+		<Name>API</Name>
+		<CallbackMethod>voiceAPICall</CallbackMethod>
+	</Action>	
+	
 </Actions>

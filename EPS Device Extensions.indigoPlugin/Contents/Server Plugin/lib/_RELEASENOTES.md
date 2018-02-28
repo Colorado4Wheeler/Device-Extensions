@@ -1,6 +1,11 @@
 Release Notes
 ==========
 
+Version 2.5.0
+---------------
+
+* Added proc to library
+
 Version 2.4.5
 ---------------
 

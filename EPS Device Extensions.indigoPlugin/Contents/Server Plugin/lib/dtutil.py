@@ -66,7 +66,7 @@ def dateDiff (t, d1, d2):
 			d2 = datetime.datetime.strptime(d2, "%Y-%m-%d %H:%M:%S") 
 
 	except:
-		log ("DateDiff ERROR: Got an error converting strings to datetimes, make sure they are in the format of Y-m-d H:M:S!")
+		indigo.server.log ("DateDiff ERROR: Got an error converting strings to datetimes, make sure they are in the format of Y-m-d H:M:S!")
 		raise
 		return
 
